@@ -16,19 +16,26 @@ def checkPathParamList = [
     params.fasta_fai,
     params.gnomad,
     params.input,
+    params.intervals_mt,
     params.multiqc_config,
+    params.reduced_penetrance,
+    params.score_config_snv,
+    params.score_config_sv,
     params.sentieonbwa_index,
     params.svdb_query_dbs,
-    params.vcfanno_resources,
-    params.vep_cache
+    params.vcfanno_resources
 ]
 
 for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
 
 // Check mandatory parameters
 if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not specified!' }
-ch_ml_model        = params.ml_model      ? file(params.ml_model)      : []
-ch_call_interval   = params.call_interval ? file(params.call_interval) : []
+ch_ml_model           = params.ml_model           ? file(params.ml_model)           : []
+ch_call_interval      = params.call_interval      ? file(params.call_interval)      : []
+ch_reduced_penetrance = params.reduced_penetrance ? file(params.reduced_penetrance) : []
+ch_score_config_snv   = params.score_config_snv   ? file(params.score_config_snv)   : []
+ch_score_config_sv    = params.score_config_sv    ? file(params.score_config_sv)    : []
+ch_vep_cache          = params.vep_cache          ? file(params.vep_cache)          : []
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,14 +53,23 @@ ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multi
 */
 
 //
+// MODULE: local modules
+//
+
+include { MAKE_PED                    } from '../modules/local/create_pedfile'
+
+//
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
+
 include { CHECK_INPUT                  } from '../subworkflows/local/check_input'
 include { PREPARE_REFERENCES           } from '../subworkflows/local/prepare_references'
+include { ANNOTATE_SNVS                } from '../subworkflows/local/annotate_snvs'
 include { ANNOTATE_STRUCTURAL_VARIANTS } from '../subworkflows/local/annotate_structural_variants'
 include { GENS                         } from '../subworkflows/local/gens'
 include { ALIGN                        } from '../subworkflows/local/align'
 include { CALL_SNV                     } from '../subworkflows/local/call_snv'
+include { ANALYSE_MT                   } from '../subworkflows/local/analyse_MT'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -73,11 +89,11 @@ include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/modules/custom/
 // SUBWORKFLOW: Consists entirely of nf-core/modules
 //
 
-include { CALL_REPEAT_EXPANSIONS       } from '../subworkflows/nf-core/call_repeat_expansions'
-include { QC_BAM                       } from '../subworkflows/nf-core/qc_bam'
-include { ANNOTATE_VCFANNO             } from '../subworkflows/nf-core/annotate_vcfanno'
-include { CALL_STRUCTURAL_VARIANTS     } from '../subworkflows/nf-core/call_structural_variants'
-include { PREPARE_MT_ALIGNMENT         } from '../subworkflows/local/prepare_MT_alignment'
+include { CALL_REPEAT_EXPANSIONS             } from '../subworkflows/nf-core/call_repeat_expansions'
+include { QC_BAM                             } from '../subworkflows/nf-core/qc_bam'
+include { CALL_STRUCTURAL_VARIANTS           } from '../subworkflows/nf-core/call_structural_variants'
+include { RANK_VARIANTS as RANK_VARIANTS_SNV } from '../subworkflows/nf-core/genmod'
+include { RANK_VARIANTS as RANK_VARIANTS_SV  } from '../subworkflows/nf-core/genmod'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,6 +116,8 @@ workflow RAREDISEASE {
     )
     ch_versions = ch_versions.mix(CHECK_INPUT.out.versions)
 
+    MAKE_PED (CHECK_INPUT.out.samples.toList())
+
     // STEP 0: QUALITY CHECK.
     FASTQC (
         CHECK_INPUT.out.reads
@@ -113,6 +131,8 @@ workflow RAREDISEASE {
         params.fasta,
         params.fasta_fai,
         params.gnomad,
+        params.gnomad_af,
+        params.gnomad_af_tbi,
         params.known_dbsnp,
         params.known_dbsnp_tbi,
         params.sentieonbwa_index,
@@ -197,38 +217,66 @@ workflow RAREDISEASE {
         )
         ch_versions = ch_versions.mix(GENS.out.versions.ifEmpty(null))
     }
-    
-    ch_sv_annotate = Channel.empty()
+
     if (params.annotate_sv_switch) {
         ANNOTATE_STRUCTURAL_VARIANTS (
             CALL_STRUCTURAL_VARIANTS.out.vcf,
             params.svdb_query_dbs,
             params.genome,
             params.vep_cache_version,
-            params.vep_cache,
+            ch_vep_cache,
             ch_references.genome_fasta,
             ch_references.sequence_dict
         ).set {ch_sv_annotate}
-
         ch_versions = ch_versions.mix(ch_sv_annotate.versions)
+
+        RANK_VARIANTS_SV (
+            ch_sv_annotate.vcf_ann,
+            MAKE_PED.out.ped,
+            ch_reduced_penetrance,
+            ch_score_config_sv
+        )
+        ch_versions = ch_versions.mix(RANK_VARIANTS_SV.out.versions)
     }
 
-    // STEP 2.1: MT CALLING
 
-    PREPARE_MT_ALIGNMENT (
-        ch_mapped.bam_bai
+    // STEP 2.1: ANALYSE MT
+    ch_intervals_mt = Channel.fromPath(params.intervals_mt)
+    ANALYSE_MT (
+        ch_mapped.bam_bai,
+        ch_references.aligner_index,
+        ch_references.genome_fasta,
+        ch_references.sequence_dict,
+        ch_references.genome_fai,
+        ch_intervals_mt
     )
-    ch_versions = ch_versions.mix(PREPARE_MT_ALIGNMENT.out.versions)
+    ch_versions = ch_versions.mix(ANALYSE_MT.out.versions)
 
     // STEP 3: VARIANT ANNOTATION
-    ch_dv_vcf = CALL_SNV.out.vcf.join(CALL_SNV.out.tabix, by: [0])
+    ch_vcf = CALL_SNV.out.vcf.join(CALL_SNV.out.tabix, by: [0])
 
-    ANNOTATE_VCFANNO (
-        params.vcfanno_toml,
-        ch_dv_vcf,
-        ch_references.vcfanno_resources
-    )
-    ch_versions = ch_versions.mix(ANNOTATE_VCFANNO.out.versions)
+    if (params.annotate_snv_switch) {
+        ANNOTATE_SNVS (
+            ch_vcf,
+            ch_references.vcfanno_resources,
+            params.vcfanno_toml,
+            params.genome,
+            params.vep_cache_version,
+            ch_vep_cache,
+            ch_references.genome_fasta,
+            ch_references.gnomad_af,
+            CHECK_INPUT.out.samples
+        ).set {ch_snv_annotate}
+        ch_versions = ch_versions.mix(ch_snv_annotate.versions)
+
+        RANK_VARIANTS_SNV (
+            ch_snv_annotate.vcf_ann,
+            MAKE_PED.out.ped,
+            ch_reduced_penetrance,
+            ch_score_config_snv
+        )
+        ch_versions = ch_versions.mix(RANK_VARIANTS_SNV.out.versions)
+    }
 
     //
     // MODULE: Pipeline reporting

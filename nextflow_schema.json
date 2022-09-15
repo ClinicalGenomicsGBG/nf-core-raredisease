@@ -99,7 +99,28 @@
                     "format": "path",
                     "fa_icon": "fas fa-bezier-curve",
                     "description": "Path to directory for gnomad vcf.",
-                    "help_text": "Path to the gnomad vcf file. If you don't provide one, gnomad annotations will not be used."
+                    "help_text": "Path to the gnomad annotations vcf file. If you don't provide one, gnomad annotations will not be used."
+                },
+                "gnomad_af": {
+                    "type": "string",
+                    "format": "path",
+                    "fa_icon": "fas fa-file",
+                    "description": "Path to the gnomad tab file with allele frequencies.",
+                    "help_text": "Path to the gnomad tab file with CHR/START/REF,ALT/AF. Can be generated from the gnomad annotations vcf."
+                },
+                "gnomad_af_tbi": {
+                    "type": "string",
+                    "format": "path",
+                    "fa_icon": "fas fa-file",
+                    "description": "Path to the index file for the gnomad tab file with allele frequencies.",
+                    "help_text": "Path to the index of gnomad tab file with CHR/START/REF,ALT/AF"
+                },
+                "intervals_mt": {
+                    "type": "string",
+                    "format": "path",
+                    "fa_icon": "fas fa-file",
+                    "description": "Path to the interval list of the non control mitochondral region.",
+                    "help_text": "Path to the interval list of the non control mitochondral regions for Mutect2"
                 },
                 "known_dbsnp": {
                     "type": "string",
@@ -134,6 +155,27 @@
                     "format": "path",
                     "fa_icon": "fas fa-chart-bar",
                     "description": "Path to sentieon machine learning model file.",
+                    "hidden": true
+                },
+                "reduced_penetrance": {
+                    "type": "string",
+                    "format": "path",
+                    "fa_icon": "fas fa-chart-bar",
+                    "description": "File with gene ids that have reduced penetrance. For use with genmod",
+                    "hidden": true
+                },
+                "score_config_snv": {
+                    "type": "string",
+                    "format": "path",
+                    "fa_icon": "fas fa-chart-bar",
+                    "description": "SNV rank model config file for genmod.",
+                    "hidden": true
+                },
+                "score_config_sv": {
+                    "type": "string",
+                    "format": "path",
+                    "fa_icon": "fas fa-chart-bar",
+                    "description": "SV rank model config file for genmod.",
                     "hidden": true
                 },
                 "target_bed": {
@@ -242,6 +284,12 @@
                     "description": "Specifies which analysis type for the pipeline- either 'wgs','wes','mito'. This changes resources consumed and tools used.",
                     "fa_icon": "fas fa-book",
                     "enum": ["wgs", "wes", "mito"]
+                },
+                "annotate_snv_switch": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Specifies whether or not to run annotate SNV subworkflow.",
+                    "fa_icon": "fas fa-book"
                 },
                 "annotate_sv_switch": {
                     "type": "boolean",
