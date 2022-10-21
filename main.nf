@@ -4,7 +4,8 @@
     nf-core/raredisease
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Github : https://github.com/nf-core/raredisease
-Website: https://nf-co.re/raredisease
+
+    Website: https://nf-co.re/raredisease
     Slack  : https://nfcore.slack.com/channels/raredisease
 ----------------------------------------------------------------------------------------
 */
@@ -19,6 +20,7 @@ nextflow.enable.dsl = 2
 
 params.fasta                = WorkflowMain.getGenomeAttribute(params, 'fasta')
 params.fasta_fai            = WorkflowMain.getGenomeAttribute(params, 'fai')
+params.bwa_index            = WorkflowMain.getGenomeAttribute(params, 'bwa')
 params.bwamem2_index        = WorkflowMain.getGenomeAttribute(params, 'bwamem2')
 params.call_interval        = WorkflowMain.getGenomeAttribute(params, 'call_interval')
 params.gnomad               = WorkflowMain.getGenomeAttribute(params, 'gnomad')
@@ -34,7 +36,6 @@ params.reduced_penetrance   = WorkflowMain.getGenomeAttribute(params, 'reduced_p
 params.score_config_snv     = WorkflowMain.getGenomeAttribute(params, 'score_config_snv')
 params.score_config_sv      = WorkflowMain.getGenomeAttribute(params, 'score_config_sv')
 params.target_bed           = WorkflowMain.getGenomeAttribute(params, 'target_bed')
-params.sentieonbwa_index    = WorkflowMain.getGenomeAttribute(params, 'bwa')
 params.svdb_query_dbs       = WorkflowMain.getGenomeAttribute(params, 'svdb_query_dbs')
 params.variant_catalog      = WorkflowMain.getGenomeAttribute(params, 'variant_catalog')
 params.vep_filters          = WorkflowMain.getGenomeAttribute(params, 'vep_filters')
