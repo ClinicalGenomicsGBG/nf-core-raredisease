@@ -2,15 +2,15 @@
 // A subworkflow to call SNVs by sentieon dnascope with a machine learning model.
 //
 
-include { SENTIEON_DNASCOPE                          } from '../../../modules/nf-core/sentieon/dnascope/main'
-include { SENTIEON_DNAMODELAPPLY                     } from '../../../modules/nf-core/sentieon/dnamodelapply/main'
-include { BCFTOOLS_MERGE                             } from '../../../modules/nf-core/bcftools/merge/main'
-include { BCFTOOLS_NORM as SPLIT_MULTIALLELICS_SEN   } from '../../../modules/nf-core/bcftools/norm/main'
-include { BCFTOOLS_NORM as REMOVE_DUPLICATES_SEN     } from '../../../modules/nf-core/bcftools/norm/main'
-include { BCFTOOLS_FILTER as BCF_FILTER_ONE          } from '../../../modules/nf-core/bcftools/filter/main'
-include { BCFTOOLS_FILTER as BCF_FILTER_TWO          } from '../../../modules/nf-core/bcftools/filter/main'
-include { BCFTOOLS_ANNOTATE                          } from '../../../modules/nf-core/bcftools/annotate/main'
-include { ADD_VARCALLER_TO_BED                       } from '../../../modules/local/add_varcallername_to_bed'
+include { ADD_VARCALLER_TO_BED                     } from '../../../modules/local/add_varcallername_to_bed'
+include { BCFTOOLS_ANNOTATE                        } from '../../../modules/nf-core/bcftools/annotate/main'
+include { BCFTOOLS_FILTER as BCF_FILTER_ONE        } from '../../../modules/nf-core/bcftools/filter/main'
+include { BCFTOOLS_FILTER as BCF_FILTER_TWO        } from '../../../modules/nf-core/bcftools/filter/main'
+include { BCFTOOLS_MERGE                           } from '../../../modules/nf-core/bcftools/merge/main'
+include { BCFTOOLS_NORM as REMOVE_DUPLICATES_SEN   } from '../../../modules/nf-core/bcftools/norm/main'
+include { BCFTOOLS_NORM as SPLIT_MULTIALLELICS_SEN } from '../../../modules/nf-core/bcftools/norm/main'
+include { SENTIEON_DNAMODELAPPLY                   } from '../../../modules/nf-core/sentieon/dnamodelapply/main'
+include { SENTIEON_DNASCOPE                        } from '../../../modules/nf-core/sentieon/dnascope/main'
 
 workflow CALL_SNV_SENTIEON {
     take:
@@ -21,10 +21,11 @@ workflow CALL_SNV_SENTIEON {
         ch_dbsnp_index     // channel: [mandatory] [ val(meta), path(tbi) ]
         ch_foundin_header  // channel: [mandatory] [ path(header) ]
         ch_genome_chrsizes // channel: [mandatory] [ path(chrsizes) ]
-        ch_genome_fasta    // channel: [mandatory] [ val(meta), path(fasta) ]
         ch_genome_fai      // channel: [mandatory] [ val(meta), path(fai) ]
-        ch_ml_model        // channel: [mandatory] [ val(meta), path(model) ]
-        ch_pcr_indel_model // channel: [optional] [ val(sentieon_dnascope_pcr_indel_model) ]
+        ch_genome_fasta    // channel: [mandatory] [ val(meta), path(fasta) ]
+        ch_ml_model                  // channel: [mandatory] [ val(meta), path(model) ]
+        ch_pcr_indel_model           // channel: [optional] [ val(sentieon_dnascope_pcr_indel_model) ]
+        val_skip_split_multiallelics // boolean
 
     main:
         // Combine bam and intervals
@@ -55,18 +56,20 @@ workflow CALL_SNV_SENTIEON {
         ch_bcffiltertwo_in = BCF_FILTER_ONE.out.vcf.join(BCF_FILTER_ONE.out.tbi, failOnMismatch: true)
         BCF_FILTER_TWO ( ch_bcffiltertwo_in )
 
-        BCF_FILTER_TWO.out.vcf.join(BCF_FILTER_TWO.out.tbi, failOnMismatch:true, failOnDuplicate:true)
+        ch_vcf_idx = BCF_FILTER_TWO.out.vcf.join(BCF_FILTER_TWO.out.tbi, failOnMismatch:true, failOnDuplicate:true)
             .map { _meta, vcf, tbi -> return [vcf, tbi] }
-            .set { ch_vcf_idx }
 
-        ch_case_info
+        ch_vcf_idx_merge_in = ch_case_info
             .combine(ch_vcf_idx)
             .groupTuple()
-            .branch{ _meta, vcfs, _idx ->                                                                                                    // branch the channel into multiple channels (single, multiple) depending on size of list
+            .map { meta, vcfs, idxs ->
+                def sorted = [vcfs, idxs].transpose().sort { it[0].name }
+                return [meta, sorted.collect { it[0] }, sorted.collect { it[1] }]
+            }
+            .branch{ _meta, vcfs, _idx ->
                 single: vcfs.size() == 1
                 multiple: vcfs.size() > 1
             }
-            .set{ ch_vcf_idx_merge_in }
 
         BCFTOOLS_MERGE(
             ch_vcf_idx_merge_in.multiple.map { meta, vcf, idx ->  return [meta, vcf, idx, []] },
@@ -79,29 +82,32 @@ workflow CALL_SNV_SENTIEON {
 
         ch_vcf_idx_case =  ch_vcf_idx_merge_in.single.mix(ch_split_multi_in)
 
-        SPLIT_MULTIALLELICS_SEN(ch_vcf_idx_case, ch_genome_fasta)
-
-        ch_remove_dup_in = SPLIT_MULTIALLELICS_SEN.out.vcf
-                            .map{meta, vcf ->
-                                    return [meta, vcf, []]}
+        if (!val_skip_split_multiallelics) {
+            SPLIT_MULTIALLELICS_SEN(ch_vcf_idx_case, ch_genome_fasta)
+            ch_remove_dup_in = SPLIT_MULTIALLELICS_SEN.out.vcf
+                                .map{meta, vcf ->
+                                        return [meta, vcf, []]}
+        } else {
+            ch_remove_dup_in = ch_vcf_idx_case
+                                .map{meta, vcf, _idx ->
+                                        return [meta, vcf, []]}
+        }
 
         REMOVE_DUPLICATES_SEN(ch_remove_dup_in, ch_genome_fasta)
 
-        ch_genome_chrsizes.flatten().map{chromsizes ->
+        ch_varcallerinfo = ch_genome_chrsizes.flatten().map{chromsizes ->
             return [[id:'sentieon_dnascope'], chromsizes]
             }
-            .set { ch_varcallerinfo }
 
-        ADD_VARCALLER_TO_BED (ch_varcallerinfo).gz_tbi
+        ADD_VARCALLER_TO_BED (ch_varcallerinfo)
+        ch_varcallerbed = ADD_VARCALLER_TO_BED.out.gz_tbi
             .map{_meta, bed, tbi -> return [bed, tbi]}
-            .set{ch_varcallerbed}
 
-        REMOVE_DUPLICATES_SEN.out.vcf
+        ch_annotate_in = REMOVE_DUPLICATES_SEN.out.vcf
             .join(REMOVE_DUPLICATES_SEN.out.tbi)
             .combine(ch_varcallerbed)
             .combine(ch_foundin_header)
             .map { meta, vcf, vcf_tbi, bed, bed_tbi, hdr -> return [meta, vcf, vcf_tbi, bed, bed_tbi, [], hdr, []] }
-            .set { ch_annotate_in }
 
         BCFTOOLS_ANNOTATE(ch_annotate_in)
 

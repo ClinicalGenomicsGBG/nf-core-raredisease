@@ -65,6 +65,14 @@
                     "help_text": "If none provided, will be generated automatically from the FASTA reference.",
                     "fa_icon": "fas fa-folder-open"
                 },
+                "bwafastalign": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "directory-path",
+                    "description": "Directory for pre-built bwa-fastalign index.",
+                    "help_text": "If none provided, will be generated automatically from the FASTA reference.",
+                    "fa_icon": "fas fa-folder-open"
+                },
                 "bwamem2": {
                     "type": "string",
                     "exists": true,
@@ -80,6 +88,14 @@
                     "description": "Directory for pre-built bwameme's learned index.",
                     "help_text": "If none provided, will be generated automatically from the FASTA reference.",
                     "fa_icon": "fas fa-folder-open"
+                },
+                "cadd_prescored": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "directory-path",
+                    "fa_icon": "fas fa-folder-open",
+                    "description": "Path to the directory containing pre-scored CADD indel annotations.",
+                    "help_text": "This folder contains the pre-scored indel files that would otherwise be in data/prescored folder as described in https://github.com/kircherlab/CADD-scripts/#manual-installation."
                 },
                 "cadd_resources": {
                     "type": "string",
@@ -160,6 +176,15 @@
                     "help_text": "The male panel used to run DenoiseReadCounts.",
                     "hidden": true
                 },
+                "glnexus_config": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "fa_icon": "fas fa-file",
+                    "description": "Glnexus configuration file",
+                    "help_text": "Path to the glnexus configuration file.",
+                    "pattern": "^\\S+\\.yml$"
+                },
                 "gnomad_af": {
                     "type": "string",
                     "exists": true,
@@ -235,6 +260,23 @@
                     "description": "Local directory base for genome references that map to the config.",
                     "help_text": "This folder is a flat structure with file names that map to the config."
                 },
+                "manta_call_regions": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "fa_icon": "fas fa-file",
+                    "pattern": "^\\S+\\.bed\\.gz$",
+                    "description": "Path to a bgzipped BED file restricting Manta SV calling to specific regions (e.g. primary chromosomes). Only applied for WGS; for WES, Manta always uses target_bed instead.",
+                    "help_text": "Must be supplied together with --manta_call_regions_tbi. Only used when analysis_type is wgs — for wes, Manta uses the target_bed supplied via --target_bed and this parameter has no effect. Useful for reducing runtime on references with many short contigs such as GRCh38."
+                },
+                "manta_call_regions_tbi": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "fa_icon": "fas fa-file",
+                    "pattern": "^\\S+\\.bed\\.gz\\.tbi$",
+                    "description": "Tabix index for the file supplied via --manta_call_regions."
+                },
                 "mito_name": {
                     "type": "string",
                     "description": "Name of the mitochondrial contig in the reference fasta file",
@@ -271,7 +313,7 @@
                     "exists": true,
                     "format": "path",
                     "fa_icon": "fas fa-file",
-                    "description": "Path to sentieon machine learning model file."
+                    "description": "Path to sentieon machine learning model file (e.g. dnascope.model). If the model is distributed in .bundle format, unpack it first with `ar models.bundle` and point this parameter to the extracted model file."
                 },
                 "mt_fasta": {
                     "type": "string",
@@ -313,16 +355,6 @@
                     "fa_icon": "fas fa-file-csv",
                     "description": "File with gene ids that have reduced penetrance. For use with genmod"
                 },
-                "rtg_truthvcfs": {
-                    "type": "string",
-                    "exists": true,
-                    "format": "file-path",
-                    "description": "Vcf used for evaluating variant calls.",
-                    "fa_icon": "fas fa-file-csv",
-                    "help_text": "Path to comma-separated file containing information about the truth vcf files used by vcfeval.",
-                    "pattern": "^\\S+\\.(csv|tsv|json|yaml|yml)$",
-                    "schema": "assets/rtg_truthvcfs_schema.json"
-                },
                 "sambamba_regions": {
                     "type": "string",
                     "exists": true,
@@ -357,14 +389,6 @@
                     "format": "path",
                     "fa_icon": "fas fa-file",
                     "description": "SV rank model config file for genmod."
-                },
-                "sdf": {
-                    "type": "string",
-                    "exists": true,
-                    "format": "directory-path",
-                    "description": "Directory for pre-built sdf index. Used by rtg/vcfeval",
-                    "help_text": "If none provided, will be generated automatically from the FASTA reference.",
-                    "fa_icon": "fas fa-folder-open"
                 },
                 "sequence_dictionary": {
                     "type": "string",
@@ -411,17 +435,6 @@
                     "help_text": "Should be Stranger's extended JSON as described at https://github.com/Clinical-Genomics/stranger/blob/master/stranger/resources/variant_catalog_grch37.json. This file is used by both ExpansionHunter and Stranger",
                     "fa_icon": "fas fa-file"
                 },
-                "sample_id_map": {
-                    "type": "string",
-                    "exists": true,
-                    "format": "file-path",
-                    "description": "Path to a file containing internal ids and customer ids in csv format.",
-                    "fa_icon": "fas fa-file-csv",
-                    "mimetype": "text/csv",
-                    "schema": "assets/sample_id_map.json",
-                    "help_text": "Optional file to rename sample ids in the vcf2cytosure vcf",
-                    "pattern": "^\\S+\\.csv$"
-                },
                 "verifybamid_svd_bed": {
                     "type": "string",
                     "exists": true,
@@ -442,6 +455,23 @@
                     "format": "file-path",
                     "description": "Path to UD matrix file from SVD result of genotype matrix. Used by verifybamid2.",
                     "fa_icon": "fas fa-file-csv"
+                },
+                "contamination_sites": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "pattern": "^\\S+\\.vcf(\\.gz)?$",
+                    "description": "Path to VCF file with common variants for GATK contamination detection.",
+                    "help_text": "Use small_exac_common_3.hg38.vcf.gz for no_alt reference genomes. This file should contain common SNP sites with population allele frequencies.",
+                    "fa_icon": "fas fa-file"
+                },
+                "contamination_sites_tbi": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "pattern": "^\\S+\\.vcf(\\.gz)?\\.tbi$",
+                    "description": "Index file for contamination sites VCF.",
+                    "fa_icon": "fas fa-file"
                 },
                 "vcf2cytosure_blacklist": {
                     "type": "string",
@@ -490,6 +520,22 @@
                     "help_text": "If no directory path is passed, vcf files will not be annotated by vep.",
                     "fa_icon": "fas fa-folder-open"
                 },
+                "vep_gtf": {
+                    "type": "string",
+                    "exists": true,
+                    "description": "Path to a bgzipped GTF file to annotate with VEP instead of a cache.",
+                    "help_text": "Mutually exclusive with vep_cache. Use for non-standard/custom references (e.g. a sliced or coordinate-remapped genome) that have no corresponding Ensembl cache. Requires vep_gtf_tbi to be set. If set, takes precedence over vep_cache for all four ENSEMBLVEP invocations.",
+                    "pattern": "^\\S+\\.gtf\\.gz$",
+                    "fa_icon": "fas fa-file"
+                },
+                "vep_gtf_tbi": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "file-path",
+                    "pattern": "^\\S+\\.gtf\\.gz\\.tbi$",
+                    "description": "Tabix index for vep_gtf.",
+                    "fa_icon": "fas fa-file"
+                },
                 "vep_plugin_files": {
                     "type": "string",
                     "exists": true,
@@ -514,6 +560,14 @@
                     "format": "path",
                     "fa_icon": "fas fa-table",
                     "description": "Path to a bed-like file exported by scout, which contains HGNC_IDs to be used in filter_vep."
+                },
+                "peddy_sites": {
+                    "type": "string",
+                    "exists": true,
+                    "format": "path",
+                    "fa_icon": "fas fa-file",
+                    "description": "Path to a custom peddy sites file (chrom:pos:ref:alt per line) to use instead of peddy's bundled hg19/hg38 site list.",
+                    "help_text": "Peddy's built-in --sites hg19/hg38 lists are absolute-coordinate, real-genome common-SNP positions. They will not overlap a coordinate-remapped or sliced reference (e.g. a minimal test dataset), causing peddy's het_check to crash on zero overlapping sites. Set this to a sites file built from positions that actually exist in the reference/VCF being used."
                 }
             },
             "required": ["fasta", "intervals_wgs", "intervals_y"]
@@ -536,6 +590,11 @@
                     "description": "Specifies whether to generate a concatenated VCF file containing both nuclear & mitochondrial snv calls",
                     "fa_icon": "fas fa-toggle-on"
                 },
+                "exclude_alt": {
+                    "type": "boolean",
+                    "description": "After aligning the reads to a reference, remove alignments to alt contigs using samtools view, retaining only primary chromosomes (GRCh37: 1-22,X,Y,MT / GRCh38: chr1-chr22,chrX,chrY,chrM).",
+                    "fa_icon": "fas fa-toggle-on"
+                },
                 "extract_alignments": {
                     "type": "boolean",
                     "description": "After aligning the reads to a reference, extract alignments from specific regions/contigs and restrict the analysis to those regions/contigs.",
@@ -554,6 +613,13 @@
                     "description": "Specifies the platform on which the reads were sequenced.",
                     "fa_icon": "fas fa-align-center"
                 },
+                "pre_vep_snv_filter_expression": {
+                    "type": "string",
+                    "default": "INFO/GNOMADAF > 0.70 | INFO/GNOMADAF_grpmax > 0.70",
+                    "description": "bcftools expression used to exclude SNVs before VEP annotation.",
+                    "help_text": "Passed as the `--exclude` expression to bcftools view before ENSEMBLVEP_SNV. Set stricter filters to reduce the number of variants processed downstream.",
+                    "fa_icon": "fas fa-filter"
+                },
                 "ngsbits_samplegender_method": {
                     "type": "string",
                     "default": "xy",
@@ -571,14 +637,19 @@
                     "description": "Specifies whether to run mitochondrial analysis for wes samples",
                     "fa_icon": "fas fa-toggle-on"
                 },
-                "run_rtgvcfeval": {
+                "run_vcfanno_db_sanity_check": {
                     "type": "boolean",
-                    "description": "Specifies whether to run rtgtools' vcfeval",
+                    "description": "Specifies whether to check vcfanno database files for zero records and remove the corresponding annotation blocks from the TOML config before running vcfanno",
                     "fa_icon": "fas fa-toggle-on"
                 },
-                "save_mapped_as_cram": {
+                "save_all_mapped_as_cram": {
                     "type": "boolean",
-                    "description": "Specifies whether to generate and publish alignment files as cram instead of bam",
+                    "description": "Specifies whether to generate and publish all (unfiltered) alignment files as cram instead of bam",
+                    "fa_icon": "fas fa-toggle-on"
+                },
+                "save_noalt_mapped_as_cram": {
+                    "type": "boolean",
+                    "description": "Specifies whether to generate and publish alt-filtered alignment files as cram instead of bam. Requires exclude_alt to be set to true.",
                     "fa_icon": "fas fa-toggle-on"
                 },
                 "scatter_count": {
@@ -587,19 +658,33 @@
                     "description": "Number of intervals to split your genome into (used to parallelize annotations)",
                     "fa_icon": "fas fa-less-than"
                 },
+                "skip_split_multiallelics": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-forward",
+                    "description": "Skip the split multiallelics step in SNV calling.",
+                    "help_text": "Skips bcftools norm --multiallelics -both in CALL_SNV_SENTIEON and CALL_SNV_DEEPVARIANT. Useful for single-interval runs where the step is unnecessary and can degrade indel quality."
+                },
                 "skip_subworkflows": {
                     "type": "string",
                     "fa_icon": "fas fa-forward",
                     "description": "Disable specified subworkflows.",
                     "help_text": "Multiple subworkflows can be specified, separated by commas.",
-                    "pattern": "^((me_calling|me_annotation|mt_annotation|mt_subsample|repeat_annotation|repeat_calling|snv_annotation|snv_calling|sv_annotation|sv_calling|generate_clinical_set)?,?)*(?<!,)$"
+                    "pattern": "^((me_calling|me_annotation|mt_annotation|mt_snv_calling|mt_subsample|mt_sv_calling|repeat_annotation|repeat_calling|snv_annotation|snv_calling|sv_annotation|sv_calling|generate_clinical_set|somalier_sex_check)?,?)*(?<!,)$"
                 },
                 "skip_tools": {
                     "type": "string",
                     "fa_icon": "fas fa-forward",
                     "description": "Disable specified tools.",
-                    "help_text": "Multiple tools can be specified, separated by commas.",
-                    "pattern": "^((fastp|gens|germlinecnvcaller|peddy|smncopynumbercaller|vcf2cytosure|fastqc|ngsbits)?,?)*(?<!,)$"
+                    "help_text": "Multiple tools can be specified, separated by commas. The GATK contamination check (`gatkcontamination`) additionally requires `contamination_sites` to be set; it is skipped automatically when that file is not provided. VerifyBamID2 (`verifybamid`) is skipped automatically when `verifybamid_svd_bed` is not provided.",
+                    "pattern": "^((fastp|gens|germlinecnvcaller|peddy|smncopynumbercaller|vcf2cytosure|fastqc|ngsbits|mitosalt|gatkcontamination|verifybamid)?,?)*(?<!,)$"
+                },
+                "somalier_sites_vcf": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Path to the somalier sites VCF (bgzipped).",
+                    "pattern": "^\\S+\\.vcf(\\.gz)?$",
+                    "fa_icon": "fas fa-file"
                 }
             }
         },
@@ -614,7 +699,7 @@
                     "default": "bwamem2",
                     "description": "Specifies the alignment algorithm to use - available options are 'bwamem2', 'bwa', 'bwameme' and 'sentieon'.",
                     "fa_icon": "fas fa-align-center",
-                    "enum": ["bwa", "bwamem2", "bwameme", "sentieon"]
+                    "enum": ["bwa", "bwafastalign", "bwamem2", "bwameme", "sentieon"]
                 },
                 "mt_aligner": {
                     "type": "string",
@@ -623,17 +708,31 @@
                     "fa_icon": "fas fa-align-center",
                     "enum": ["bwa", "bwamem2", "sentieon"]
                 },
+                "qc_metrics_tool": {
+                    "type": "string",
+                    "default": "picard",
+                    "description": "Specifies the tool to collect BAM QC metrics - available options are 'picard' and 'riker'.",
+                    "fa_icon": "fas fa-ruler",
+                    "enum": ["picard", "riker"]
+                },
+                "duplicates_marker": {
+                    "type": "string",
+                    "default": "markduplicates",
+                    "description": "Specifies the tool to use for marking duplicates. The default is 'markduplicates', another option is the faster alternative 'fastdup'.",
+                    "fa_icon": "fas fa-align-center",
+                    "enum": ["markduplicates", "fastdup"]
+                },
                 "samtools_sort_threads": {
                     "type": "integer",
                     "default": 4,
-                    "description": "Number of threads allocated for sorting alignment files (used only by bwameme)",
+                    "description": "Number of threads allocated for sorting alignment files (used by bwameme and bwafastalign)",
                     "help_text": "To know more about this parameter check [bwameme](https://github.com/kaist-ina/BWA-MEME?tab=readme-ov-file#building-pipeline-with-samtools) documentation.",
                     "fa_icon": "fas fa-less-than"
                 },
                 "mbuffer_mem": {
                     "type": "integer",
-                    "default": 3072,
-                    "description": "Memory allocated for mbuffer in megabytes (used only by bwameme)",
+                    "default": 8192,
+                    "description": "Memory allocated for mbuffer in megabytes (MB) (used by bwameme and bwafastalign)",
                     "help_text": "To know more about this parameter check [bwameme](https://github.com/kaist-ina/BWA-MEME?tab=readme-ov-file#building-pipeline-with-samtools) documentation.",
                     "fa_icon": "fas fa-less-than"
                 },
@@ -741,7 +840,7 @@
                 },
                 "vep_cache_version": {
                     "type": "integer",
-                    "default": 112,
+                    "default": 116,
                     "description": "Specify the version of the VEP cache provided to the `--vep_cache` option.",
                     "fa_icon": "fas fa-align-center"
                 }
@@ -754,7 +853,13 @@
             "description": "Parameters used to run mitosalt and saltshaker",
             "properties": {
                 "hisat2": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Path to a pre-built HISAT2 genome index directory. If not provided, the index is built at runtime."
+                },
+                "hisat2_build_memory": {
+                    "type": "string",
+                    "description": "Minimum memory required to build HISAT2 index with splice sites and exons. If available memory is below this threshold, a simpler index is built without splice sites.",
+                    "fa_icon": "fas fa-memory"
                 },
                 "mitosalt_breakspan": {
                     "type": "integer",
@@ -979,13 +1084,6 @@
                     "type": "boolean",
                     "description": "Do not use coloured log outputs.",
                     "fa_icon": "fas fa-palette",
-                    "hidden": true
-                },
-                "hook_url": {
-                    "type": "string",
-                    "description": "Incoming hook URL for messaging service",
-                    "fa_icon": "fas fa-people-group",
-                    "help_text": "Incoming hook URL for messaging service. Currently, MS Teams and Slack are supported.",
                     "hidden": true
                 },
                 "multiqc_config": {

@@ -2,11 +2,11 @@
 // A subworkflow to annotate structural variants.
 //
 
-include { SVDB_QUERY as SVDB_QUERY_DB     } from '../../../modules/nf-core/svdb/query/main'
-include { SVDB_QUERY as SVDB_QUERY_BEDPE  } from '../../../modules/nf-core/svdb/query/main'
-include { PICARD_SORTVCF                  } from '../../../modules/nf-core/picard/sortvcf/main'
 include { BCFTOOLS_VIEW                   } from '../../../modules/nf-core/bcftools/view/main'
 include { ENSEMBLVEP_VEP as ENSEMBLVEP_SV } from '../../../modules/nf-core/ensemblvep/vep/main'
+include { PICARD_SORTVCF                  } from '../../../modules/nf-core/picard/sortvcf/main'
+include { SVDB_QUERY as SVDB_QUERY_BEDPE  } from '../../../modules/nf-core/svdb/query/main'
+include { SVDB_QUERY as SVDB_QUERY_DB     } from '../../../modules/nf-core/svdb/query/main'
 
 workflow ANNOTATE_STRUCTURAL_VARIANTS {
 
@@ -16,8 +16,9 @@ workflow ANNOTATE_STRUCTURAL_VARIANTS {
         ch_svdb_bedpedbs        // channel: [optional]
         ch_svdb_dbs             // channel: [optional]
         ch_vcf                  // channel: [mandatory] [ val(meta), path(vcf) ]
-        ch_vep_cache            // channel: [mandatory] [ path(cache) ]
+        ch_vep_cache            // channel: [mandatory] [ val(meta), path(cache) ]
         ch_vep_extra_files      // channel: [mandatory] [ path(files) ]
+        ch_vep_gtf              // channel: [optional]  [ path(gtf) ]
         val_svdb_query_bedpedbs // String: [optional] params.svdb_query_bedpedbs
         val_svdb_query_dbs      // String: [optional] params.svdb_query_dbs
         val_genome              // string: [mandatory] GRCh37 or GRCh38
@@ -25,7 +26,7 @@ workflow ANNOTATE_STRUCTURAL_VARIANTS {
 
     main:
         if (val_svdb_query_dbs) {
-            ch_svdb_dbs
+            ch_svdb_dbs = ch_svdb_dbs
                 .multiMap { file, in_freq_info_key, in_allele_count_info_key, out_freq_info_key, out_allele_count_info_key ->
                     vcf_dbs:  file
                     in_frqs:  in_freq_info_key
@@ -33,7 +34,6 @@ workflow ANNOTATE_STRUCTURAL_VARIANTS {
                     out_frqs: out_freq_info_key
                     out_occs: out_allele_count_info_key
                 }
-                .set { ch_svdb_dbs }
 
             SVDB_QUERY_DB (
                 ch_vcf,
@@ -49,7 +49,7 @@ workflow ANNOTATE_STRUCTURAL_VARIANTS {
         }
 
         if (val_svdb_query_bedpedbs) {
-            ch_svdb_bedpedbs
+            ch_svdb_bedpedbs = ch_svdb_bedpedbs
                 .multiMap { file, in_freq_info_key, in_allele_count_info_key, out_freq_info_key, out_allele_count_info_key ->
                     bedpedbs: file
                     in_frqs:  in_freq_info_key
@@ -57,7 +57,6 @@ workflow ANNOTATE_STRUCTURAL_VARIANTS {
                     out_frqs: out_freq_info_key
                     out_occs: out_allele_count_info_key
                 }
-                .set { ch_svdb_bedpedbs }
 
             SVDB_QUERY_BEDPE (
                 ch_vcf,
@@ -74,14 +73,12 @@ workflow ANNOTATE_STRUCTURAL_VARIANTS {
 
         PICARD_SORTVCF(ch_vcf, ch_genome_fasta, ch_genome_dictionary)
 
-        PICARD_SORTVCF.out.vcf
+        ch_sortvcf = PICARD_SORTVCF.out.vcf
             .map { meta, vcf -> return [meta,vcf,[]] }
-            .set { ch_sortvcf }
 
         BCFTOOLS_VIEW(ch_sortvcf, [], [], [])
-            .vcf
+        ch_vep_in = BCFTOOLS_VIEW.out.vcf
             .map { meta, vcf -> return [meta, vcf, []]}
-            .set { ch_vep_in }
 
         ENSEMBLVEP_SV(
             ch_vep_in,
@@ -90,16 +87,12 @@ workflow ANNOTATE_STRUCTURAL_VARIANTS {
             val_vep_cache_version,
             ch_vep_cache,
             ch_genome_fasta,
-            ch_vep_extra_files
+            ch_vep_extra_files,
+            ch_vep_gtf
         )
 
-        ch_publish = ENSEMBLVEP_SV.out.vcf
-            .mix(ENSEMBLVEP_SV.out.tbi)
-            .mix(ENSEMBLVEP_SV.out.report.map{ meta, process, vep, html -> return [meta, html] })
-            .map { meta, value -> ['annotate_sv/', [meta, value]] }
-
     emit:
-        publish  = ch_publish            // channel: [ val(destination), val(value) ]
-        tbi      = ENSEMBLVEP_SV.out.tbi // channel: [ val(meta), path(tbi) ]
-        vcf_ann  = ENSEMBLVEP_SV.out.vcf // channel: [ val(meta), path(vcf) ]
+        report   = ENSEMBLVEP_SV.out.report.map { meta, _process, _tool, html -> [meta, html] } // channel: [ val(meta), path(html) ]
+        tbi      = ENSEMBLVEP_SV.out.tbi    // channel: [ val(meta), path(tbi) ]
+        vcf_ann  = ENSEMBLVEP_SV.out.vcf    // channel: [ val(meta), path(vcf) ]
 }

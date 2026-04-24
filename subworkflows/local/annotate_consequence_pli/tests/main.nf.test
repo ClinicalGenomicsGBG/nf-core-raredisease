@@ -23,11 +23,10 @@ nextflow_workflow {
                     file(params.pipelines_testdata_base_path + 'reference/variant_consequences_v2.txt', checkIfExists: true)
                 ]).collect()
                 input[1] = channel.of([
-                    [id:'justhusky'],
-                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/genome/vcf/genmod_compound.vcf', checkIfExists: true)
+                    [id:'amusingmarmoset'],
+                    file(params.subworkflow_fixtures + '/amusingmarmoset_vep_annotated_snv.vcf.gz', checkIfExists: true)
                 ])
                 input[2] = false
-                input[3] = false
                 """
             }
         }
@@ -53,11 +52,10 @@ nextflow_workflow {
                     file(params.pipelines_testdata_base_path + 'reference/variant_consequences_v2.txt', checkIfExists: true)
                 ]).collect()
                 input[1] = channel.of([
-                    [id:'justhusky'],
-                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/genome/vcf/genmod_compound.vcf', checkIfExists: true)
+                    [id:'amusingmarmoset'],
+                    file(params.subworkflow_fixtures + '/amusingmarmoset_vep_annotated_snv.vcf.gz', checkIfExists: true)
                 ])
                 input[2] = true
-                input[3] = "ann_csq"
                 """
             }
         }
@@ -66,10 +64,8 @@ nextflow_workflow {
             assertAll(
                 { assert workflow.success },
                 { assert snapshot(
-                    workflow.out.publish.flatten()
-                        .findAll { it instanceof String && (it.startsWith('/') || it.contains('.')) }
-                        .collect { new File(it).name }
-                        .sort(),
+                    workflow.out.vcf_ann.collect { meta, f -> file(f).name },
+                    workflow.out.tbi.collect { meta, f -> file(f).name },
                     path(workflow.out.vcf_ann[0][1]).vcf.variantsMD5,
                     path(workflow.out.vcf_ann[0][1]).vcf.summary
                 ).match() }
@@ -88,11 +84,10 @@ nextflow_workflow {
                     file(params.pipelines_testdata_base_path + 'reference/variant_consequences_v2.txt', checkIfExists: true)
                 ]).collect()
                 input[1] = channel.of([
-                    [id:'justhusky'],
-                    file(params.modules_testdata_base_path + 'genomics/homo_sapiens/genome/vcf/genmod_compound.vcf', checkIfExists: true)
+                    [id:'amusingmarmoset'],
+                    file(params.subworkflow_fixtures + '/amusingmarmoset_vep_annotated_snv.vcf.gz', checkIfExists: true)
                 ])
                 input[2] = true
-                input[3] = "ann_csq"
                 """
             }
         }

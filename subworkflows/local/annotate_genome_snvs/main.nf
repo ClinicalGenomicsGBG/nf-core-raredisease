@@ -2,53 +2,58 @@
 // A subworkflow to annotate snvs in the genome
 //
 
-include { VCFANNO                               } from '../../../modules/nf-core/vcfanno/main'
-include { BCFTOOLS_CONCAT                       } from '../../../modules/nf-core/bcftools/concat/main'
-include { BCFTOOLS_ROH                          } from '../../../modules/nf-core/bcftools/roh/main'
-include { BCFTOOLS_VIEW                         } from '../../../modules/nf-core/bcftools/view/main'
-include { RHOCALL_ANNOTATE                      } from '../../../modules/nf-core/rhocall/annotate/main'
-include { UPD as UPD_SITES                      } from '../../../modules/nf-core/upd/main'
-include { UPD as UPD_REGIONS                    } from '../../../modules/nf-core/upd/main'
-include { CHROMOGRAPH as CHROMOGRAPH_SITES      } from '../../../modules/nf-core/chromograph/main'
-include { CHROMOGRAPH as CHROMOGRAPH_REGIONS    } from '../../../modules/nf-core/chromograph/main'
-include { ENSEMBLVEP_VEP as ENSEMBLVEP_SNV      } from '../../../modules/nf-core/ensemblvep/vep/main'
-include { TABIX_BGZIPTABIX as ZIP_TABIX_ROHCALL } from '../../../modules/nf-core/tabix/bgziptabix/main'
-include { GATK4_SELECTVARIANTS                  } from '../../../modules/nf-core/gatk4/selectvariants/main'
-include { ANNOTATE_CADD                         } from '../annotate_cadd'
-include { ANNOTATE_RHOCALLVIZ                   } from '../annotate_rhocallviz'
+include { ANNOTATE_CADD                              } from '../annotate_cadd'
+include { ANNOTATE_RHOCALLVIZ                        } from '../annotate_rhocallviz'
+include { BCFTOOLS_CONCAT                            } from '../../../modules/nf-core/bcftools/concat/main'
+include { BCFTOOLS_CONCAT as BCFTOOLS_CONCAT_VCFANNO } from '../../../modules/nf-core/bcftools/concat/main'
+include { BCFTOOLS_ROH                               } from '../../../modules/nf-core/bcftools/roh/main'
+include { BCFTOOLS_VIEW                              } from '../../../modules/nf-core/bcftools/view/main'
+include { CHROMOGRAPH as CHROMOGRAPH_REGIONS         } from '../../../modules/nf-core/chromograph/main'
+include { CHROMOGRAPH as CHROMOGRAPH_SITES           } from '../../../modules/nf-core/chromograph/main'
+include { ENSEMBLVEP_VEP as ENSEMBLVEP_SNV           } from '../../../modules/nf-core/ensemblvep/vep/main'
+include { GATK4_SELECTVARIANTS                       } from '../../../modules/nf-core/gatk4/selectvariants/main'
+include { RHOCALL_ANNOTATE                           } from '../../../modules/nf-core/rhocall/annotate/main'
+include { TABIX_BGZIPTABIX as ZIP_TABIX_ROHCALL      } from '../../../modules/nf-core/tabix/bgziptabix/main'
+include { UPD as UPD_REGIONS                         } from '../../../modules/nf-core/upd/main'
+include { UPD as UPD_SITES                           } from '../../../modules/nf-core/upd/main'
+include { VCFANNO                                    } from '../../../modules/nf-core/vcfanno/main'
 
 workflow ANNOTATE_GENOME_SNVS {
 
     take:
-        ch_cadd_header        // channel: [mandatory] [ path(txt) ]
-        ch_cadd_resources     // channel: [mandatory] [ path(annotation) ]
-        ch_genome_chrsizes    // channel: [mandatory] [ path(sizes) ]
-        ch_genome_fai         // channel: [mandatory] [ path(fai) ]
-        ch_genome_fasta       // channel: [mandatory] [ val(meta), path(fasta) ]
-        ch_gnomad_af          // channel: [optional] [ path(tab), path(tbi) ]
-        ch_samples            // channel: [mandatory] [ val(sample_meta) ]
-        ch_split_intervals    // channel: [mandatory] [ path(intervals) ]
-        ch_vcf                // channel: [mandatory] [ val(meta), path(vcf), path(tbi) ]
-        ch_vcfanno_extra      // channel: [mandatory] [ [path(vcf),path(index)] ]
-        ch_vcfanno_lua        // channel: [mandatory] [ path(lua) ]
-        ch_vcfanno_resources  // channel: [mandatory] [ [path(vcf1),path(index1),...,path(vcfn),path(indexn)] ]
-        ch_vcfanno_toml       // channel: [mandatory] [ path(toml) ]
-        ch_vep_cache          // channel: [mandatory] [ path(cache) ]
-        ch_vep_extra_files    // channel: [mandatory] [ path(files) ]
-        val_cadd_resources    // string: path to cadd resources file
-        val_genome            // string: GRCh37 or GRCh38
-        val_vep_cache_version // string:  vep version ex: 107
+        ch_cadd_header                  // channel: [mandatory] [ path(txt) ]
+        ch_cadd_prescored               // channel: [optional]  [ val(meta), path(prescored) ]
+        ch_cadd_resources               // channel: [mandatory] [ val(meta), path(annotation) ]
+        ch_genome_chrsizes              // channel: [mandatory] [ path(sizes) ]
+        ch_genome_fai                   // channel: [mandatory] [ path(fai) ]
+        ch_genome_fasta                 // channel: [mandatory] [ val(meta), path(fasta) ]
+        ch_gnomad_af                    // channel: [optional] [ path(tab), path(tbi) ]
+        ch_samples                      // channel: [mandatory] [ val(sample_meta) ]
+        ch_split_intervals              // channel: [mandatory] [ val(meta), path(interval_list) ]
+        ch_vcf                          // channel: [mandatory] [ val(meta), path(vcf), path(tbi) ]
+        ch_vcfanno_extra                // channel: [mandatory] [ [path(vcf),path(index)] ]
+        ch_vcfanno_lua                  // channel: [mandatory] [ path(lua) ]
+        ch_vcfanno_resources            // channel: [mandatory] [ [path(vcf1),path(index1),...,path(vcfn),path(indexn)] ]
+        ch_vcfanno_toml                 // channel: [mandatory] [ path(toml) ]
+        ch_vep_cache                    // channel: [mandatory] [ val(meta), path(cache) ]
+        ch_vep_extra_files              // channel: [mandatory] [ path(files) ]
+        ch_vep_gtf                      // channel: [optional]  [ path(gtf) ]
+        val_analysis_type               // string: wgs, wes, or mito
+        val_cadd_resources              // string: path to cadd resources file
+        val_genome                      // string: GRCh37 or GRCh38
+        val_vep_cache_version           // string:  vep version ex: 107
 
     main:
-        ch_cadd_vcf       = channel.empty()
-        ch_vcf_scatter_in = channel.empty()
-        ch_vep_in         = channel.empty()
+        ch_cadd_vcf                  = channel.empty()
+        ch_chromograph_regions_plots = channel.empty()
+        ch_chromograph_sites_plots   = channel.empty()
+        ch_vcf_scatter_in            = channel.empty()
+        ch_vep_in                    = channel.empty()
 
-        ch_vcf
+        ch_roh_in = ch_vcf
             .filter { meta, _vcf, _tbi ->
                 meta.probands.size() > 0
             }
-            .set { ch_roh_in }
 
         BCFTOOLS_ROH (ch_roh_in, ch_gnomad_af, [], [], [], [])
 
@@ -56,9 +61,16 @@ workflow ANNOTATE_GENOME_SNVS {
 
         ZIP_TABIX_ROHCALL (RHOCALL_ANNOTATE.out.vcf)
 
-        ch_vcf
+        // BCFTOOLS_ROH and RHOCALL_ANNOTATE only run when probands are present (filtered above).
+        // The remainder:true join pads cases without rohcall output with a single null, giving
+        // tuples of length 4 (no rohcall) vs 5 (rohcall). After combining with an interval both
+        // grow by one, so size==6 means this case has probands and a rohcall-annotated VCF.
+        ch_split_intervals_flat = ch_split_intervals
+            .flatMap { _meta, intervals -> intervals.collect{ interval -> [interval] } }
+
+        ch_vcf_scatter_in = ch_vcf
             .join(ZIP_TABIX_ROHCALL.out.gz_index, remainder: true)
-            .combine(ch_split_intervals)
+            .combine(ch_split_intervals_flat)
             .map { it ->
                     def meta = it[0]
                     def vcf  = it[1]
@@ -86,20 +98,27 @@ workflow ANNOTATE_GENOME_SNVS {
                     ]
                 }
             }
-            .set { ch_vcf_scatter_in }
 
         GATK4_SELECTVARIANTS (ch_vcf_scatter_in)
 
-        GATK4_SELECTVARIANTS.out.vcf
+        ch_vcfanno_in = GATK4_SELECTVARIANTS.out.vcf
             .join(GATK4_SELECTVARIANTS.out.tbi)
             .combine(ch_vcfanno_extra)
-            .set { ch_vcfanno_in }
 
         VCFANNO (ch_vcfanno_in, ch_vcfanno_toml, ch_vcfanno_lua, ch_vcfanno_resources)
 
-        VCFANNO.out.vcf
+        // Concatenate the vcfanno-annotated scatters per sample before pre_vep_snv_filter_expression
+        // trims variants below, so UPD and rhocall-viz (fed from this concat further down) see the
+        // full unfiltered variant set instead of only what's left for VEP.
+        ch_concat_vcfanno_in = VCFANNO.out.vcf
             .join(VCFANNO.out.tbi, failOnMismatch:true, failOnDuplicate:true)
-            .set { ch_bcftools_view_in }
+            .map { meta, vcf, tbi -> [meta - meta.subMap('scatterid'), vcf, tbi] }
+            .groupTuple()
+
+        BCFTOOLS_CONCAT_VCFANNO (ch_concat_vcfanno_in)
+
+        ch_bcftools_view_in = VCFANNO.out.vcf
+            .join(VCFANNO.out.tbi, failOnMismatch:true, failOnDuplicate:true)
 
         // filter on frequencies
         BCFTOOLS_VIEW(
@@ -109,12 +128,12 @@ workflow ANNOTATE_GENOME_SNVS {
         // Annotating with CADD
         if (!val_cadd_resources.equals(null)) {
 
-            BCFTOOLS_VIEW.out.vcf
+            ch_cadd_in = BCFTOOLS_VIEW.out.vcf
                 .join(BCFTOOLS_VIEW.out.tbi, failOnMismatch:true, failOnDuplicate:true)
-                .set { ch_cadd_in }
 
             ANNOTATE_CADD (
                 ch_cadd_resources,
+                ch_cadd_prescored,
                 ch_genome_fai,
                 ch_cadd_header,
                 ch_cadd_in,
@@ -123,7 +142,7 @@ workflow ANNOTATE_GENOME_SNVS {
             ch_cadd_vcf = ANNOTATE_CADD.out.vcf
         }
 
-        BCFTOOLS_VIEW.out.vcf
+        ch_annotated_vcfs = BCFTOOLS_VIEW.out.vcf
             .join(ch_cadd_vcf, remainder: true)
             .branch { meta, selectvariants, cadd  ->
                 selvar: cadd.equals(null)
@@ -131,11 +150,9 @@ workflow ANNOTATE_GENOME_SNVS {
                 cadd: !(cadd.equals(null))
                     return [meta + [prefix: meta.prefix + "_filter_cadd"], cadd]
             }
-            .set { ch_annotated_vcfs }
 
-        ch_annotated_vcfs.selvar.mix(ch_annotated_vcfs.cadd)
+        ch_vep_in = ch_annotated_vcfs.selvar.mix(ch_annotated_vcfs.cadd)
             .map { meta, vcf -> return [meta, vcf, []] }
-            .set { ch_vep_in }
 
         // Annotating with ensembl Vep
         ENSEMBLVEP_SNV(
@@ -145,63 +162,50 @@ workflow ANNOTATE_GENOME_SNVS {
             val_vep_cache_version,
             ch_vep_cache,
             ch_genome_fasta,
-            ch_vep_extra_files
+            ch_vep_extra_files,
+            ch_vep_gtf
         )
 
-        ENSEMBLVEP_SNV.out.vcf
-            .map { meta, vcf -> [meta - meta.subMap('scatterid'), vcf] }
-            .set { ch_vep_vcf_out }
-        ENSEMBLVEP_SNV.out.tbi
-            .map { meta, tbi -> [meta - meta.subMap('scatterid'), tbi] }
-            .set { ch_vep_tbi_out }
-
-        ch_vep_vcf_out
-            .join(ch_vep_tbi_out, failOnMismatch:true)
+        ch_concat_in = ENSEMBLVEP_SNV.out.vcf
+            .join(ENSEMBLVEP_SNV.out.tbi, failOnMismatch:true, failOnDuplicate:true)
+            .map { meta, vcf, tbi -> [meta - meta.subMap('scatterid'), vcf, tbi] }
             .groupTuple()
-            .map { meta, vcfs, tbis ->
-                def sortedvcfs = vcfs.sort { vcf -> vcf.baseName }
-                def sortedtbis = tbis.sort { tbi -> tbi.baseName }
-                return [ meta, sortedvcfs, sortedtbis ]
-            }
-            .set { ch_concat_in }
 
         BCFTOOLS_CONCAT (ch_concat_in)
 
-        BCFTOOLS_CONCAT.out.vcf
+        ch_upd_in = BCFTOOLS_CONCAT_VCFANNO.out.vcf
             .flatMap { meta, vcf ->
                 meta.upd_children.collect { upd_sample ->
                     def new_meta = meta + [upd_child: upd_sample, prefix: meta.prefix + "_vcfanno"]
                     [new_meta, vcf]
                 }
             }
-            .set { ch_upd_in }
 
-        UPD_SITES(ch_upd_in)
-        UPD_REGIONS(ch_upd_in)
-        CHROMOGRAPH_SITES([[],[]], [[],[]], [[],[]], [[],[]], [[],[]], [[],[]], UPD_SITES.out.bed)
-        CHROMOGRAPH_REGIONS([[],[]], [[],[]], [[],[]], [[],[]], [[],[]], UPD_REGIONS.out.bed, [[],[]])
+        if (val_analysis_type.equals("wgs")) {
+            UPD_SITES(ch_upd_in)
+            UPD_REGIONS(ch_upd_in)
+            CHROMOGRAPH_SITES([[],[]], [[],[]], [[],[]], [[],[]], [[],[]], [[],[]], UPD_SITES.out.bed)
+            CHROMOGRAPH_REGIONS([[],[]], [[],[]], [[],[]], [[],[]], [[],[]], UPD_REGIONS.out.bed, [[],[]])
+            ch_chromograph_sites_plots   = CHROMOGRAPH_SITES.out.plots
+            ch_chromograph_regions_plots = CHROMOGRAPH_REGIONS.out.plots
+        }
 
-        BCFTOOLS_CONCAT.out.vcf
+        ch_concat_vcf_out = BCFTOOLS_CONCAT.out.vcf
             .map { meta, vcf -> [meta - meta.subMap('prefix'), vcf] }
-            .set { ch_concat_vcf_out }
 
-        BCFTOOLS_CONCAT.out.tbi
+        ch_concat_tbi_out = BCFTOOLS_CONCAT.out.tbi
             .map { meta, tbi -> [meta - meta.subMap('prefix'), tbi] }
-            .set { ch_concat_tbi_out }
 
-        ch_vep_ann_index = ch_concat_vcf_out.join(ch_concat_tbi_out, failOnMismatch:true, failOnDuplicate:true)
-        //rhocall_viz
-        ANNOTATE_RHOCALLVIZ(ch_genome_chrsizes, ch_samples, ch_vep_ann_index )
-
-        ch_publish = CHROMOGRAPH_SITES.out.plots
-            .mix(CHROMOGRAPH_REGIONS.out.plots)
-            .mix(ch_concat_vcf_out)
-            .mix(ch_concat_tbi_out)
-            .map { meta, value -> ['annotate_snv/genome/', [meta, value]] }
-            .mix(ANNOTATE_RHOCALLVIZ.out.publish)
+        ch_vcfanno_ann_index = BCFTOOLS_CONCAT_VCFANNO.out.vcf.join(BCFTOOLS_CONCAT_VCFANNO.out.tbi, failOnMismatch:true, failOnDuplicate:true)
+        ANNOTATE_RHOCALLVIZ(ch_genome_chrsizes, ch_samples, ch_vcfanno_ann_index )
 
     emit:
-        tbi      = ch_concat_tbi_out // channel: [ val(meta), path(tbi) ]
-        vcf_ann  = ch_concat_vcf_out // channel: [ val(meta), path(vcf) ]
-        publish  = ch_publish   // channel: [ val(destination), val(value) ]
+        bcftools_concat_tbi       = ch_concat_tbi_out                                // channel: [ val(meta), path(tbi) ]
+        bcftools_concat_vcf       = ch_concat_vcf_out                                // channel: [ val(meta), path(vcf) ]
+        chromograph_autozyg_plots = ANNOTATE_RHOCALLVIZ.out.chromograph_autozyg_plots // channel: [ val(meta), path(png) ]
+        chromograph_regions_plots = ch_chromograph_regions_plots                     // channel: [ val(meta), path(png) ]
+        chromograph_sites_plots   = ch_chromograph_sites_plots                       // channel: [ val(meta), path(png) ]
+        rhocall_viz_bed           = ANNOTATE_RHOCALLVIZ.out.rhocall_viz_bed          // channel: [ val(meta), path(bed) ]
+        rhocall_viz_wig           = ANNOTATE_RHOCALLVIZ.out.rhocall_viz_wig          // channel: [ val(meta), path(wig) ]
+        ucsc_wigtobigwig_bw       = ANNOTATE_RHOCALLVIZ.out.ucsc_wigtobigwig_bw     // channel: [ val(meta), path(bw) ]
 }

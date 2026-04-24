@@ -28,10 +28,12 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
         - [FastQC](#fastqc)
         - [Mosdepth](#mosdepth)
         - [Picard tools](#picard-tools)
+        - [Riker multi](#riker-multi)
         - [Chromograph coverage](#chromograph-coverage)
         - [Sention WgsMetricsAlgo](#sention-wgsmetricsalgo)
         - [TIDDIT's cov and UCSC WigToBigWig](#tiddits-cov-and-ucsc-wigtobigwig)
         - [VerifyBamID2](#verifybamid2)
+        - [GATK CalculateContamination](#gatk-calculatecontamination)
       - [Reporting](#reporting)
         - [MultiQC](#multiqc)
     - [Variant calling - SNV](#variant-calling---snv)
@@ -60,7 +62,8 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
     - [Mitochondrial analysis](#mitochondrial-analysis)
       - [Alignment and variant calling](#alignment-and-variant-calling)
         - [MT deletion script](#mt-deletion-script)
-        - [eKLIPse](#eklipse)
+        - [MitoSAlt](#mitosalt)
+        - [saltshaker](#saltshaker)
       - [Annotation](#annotation)
         - [vcfanno](#vcfanno-1)
         - [CADD](#cadd-1)
@@ -71,9 +74,9 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
     - [Mobile element analysis](#mobile-element-analysis)
       - [Calling mobile elements](#calling-mobile-elements)
       - [Annotating mobile elements](#annotating-mobile-elements)
-    - [Variant evaluation](#variant-evaluation)
     - [Gens](#gens)
     - [Peddy](#peddy)
+    - [Pedigree](#pedigree)
     - [Pipeline information](#pipeline-information)
 
 ### Alignment
@@ -100,26 +103,28 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 
 ##### Picard's MarkDuplicates
 
-[Picard MarkDuplicates](https://broadinstitute.github.io/picard/command-line-overview.html#MarkDuplicates) is used for marking PCR duplicates that can occur during library amplification. This is essential as the presence of such duplicates results in false inflated coverages, which in turn can lead to overly-confident genotyping calls during variant calling. Only reads aligned by Bwa-mem2, bwameme and bwa are processed by this tool. By default, alignment files are published in bam format. If you would like to store cram files instead, set `--save_mapped_as_cram` to true.
+[Picard MarkDuplicates](https://broadinstitute.github.io/picard/command-line-overview.html#MarkDuplicates) is used for marking PCR duplicates that can occur during library amplification. This is essential as the presence of such duplicates results in false inflated coverages, which in turn can lead to overly-confident genotyping calls during variant calling. Only reads aligned by Bwa-mem2, bwameme and bwa are processed by this tool. By default, alignment files are published in bam format. To publish cram files instead, use `--save_all_mapped_as_cram` for the full (unfiltered) alignment, or `--save_noalt_mapped_as_cram` for the alt-filtered alignment (requires `--exclude_alt`).
 
 <details markdown="1">
 <summary>Output files from Alignment</summary>
 
 - `{outputdir}/alignment/`
-  - `*.bam|*.cram`: Alignment file in bam/cram format.
+  - `*_sorted_md.bam|*_sorted_md.cram`: Full (unfiltered) alignment file. Published as bam by default, or as cram when `--save_all_mapped_as_cram` is set.
+  - `*_sorted_md_primary_contigs.cram`: Alt-filtered alignment file in cram format. Published when `--save_noalt_mapped_as_cram` is set (requires `--exclude_alt`). Contains only primary chromosomes (GRCh37: 1-22,X,Y,MT / GRCh38: chr1-chr22,chrX,chrY,chrM).
   - `*.bai|*.crai`: Index of the corresponding bam/cram file.
   - `*.txt`: Text file containing the dedup metrics.
   </details>
 
 ##### Sentieon Dedup
 
-[Sentieon Dedup](https://support.sentieon.com/manual/DNAseq_usage/dnaseq/#remove-or-mark-duplicates) is the algorithm used by Sentieon's driver to remove duplicate reads. Only reads aligned by Sentieon's implementation of bwa are processed by this algorithm. By default, alignment files are published in bam format. If you would like to store cram files instead, set `--save_mapped_as_cram` to true.
+[Sentieon Dedup](https://support.sentieon.com/manual/DNAseq_usage/dnaseq/#remove-or-mark-duplicates) is the algorithm used by Sentieon's driver to remove duplicate reads. Only reads aligned by Sentieon's implementation of bwa are processed by this algorithm. By default, alignment files are published in bam format. To publish cram files instead, use `--save_all_mapped_as_cram` for the full (unfiltered) alignment, or `--save_noalt_mapped_as_cram` for the alt-filtered alignment (requires `--exclude_alt`).
 
 <details markdown="1">
 <summary>Output files from Alignment</summary>
 
 - `{outputdir}/alignment/`
-  - `*.bam|*.cram`: Alignment file in bam/cram format.
+  - `*_sorted_md.bam|*_sorted_md.cram`: Full (unfiltered) alignment file. Published as bam by default, or as cram when `--save_all_mapped_as_cram` is set.
+  - `*_sorted_md_primary_contigs.cram`: Alt-filtered alignment file in cram format. Published when `--save_noalt_mapped_as_cram` is set (requires `--exclude_alt`). Contains only primary chromosomes (GRCh37: 1-22,X,Y,MT / GRCh38: chr1-chr22,chrX,chrY,chrM).
   - `*.bai|*.crai`: Index of the corresponding bam/cram file.
   - `*.metrics`: Text file containing the dedup metrics.
   </details>
@@ -178,6 +183,10 @@ The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They m
 
 [Picard's CollectMutipleMetrics, CollectHsMetrics, and CollectWgsMetrics](https://broadinstitute.github.io/picard/) We use Picardtools' CollectWgsMetrics and CollectHsMetrics utilities to calculate metrics about coverage and performance of WGS & WES experiments. In addition to those metrics, we use CollectMultipleMetrics to gather information about alignment summary, insert size, GC content etc., The metrics generated by these three utilites are passed along to MultiQC to generate several plots as well.
 
+:::note
+Picard is the default BAM QC engine. Set `--qc_metrics_tool riker` to use Riker instead (see [Riker multi](#riker-multi) below).
+:::
+
 <details markdown="1">
 <summary>Output files</summary>
 
@@ -190,6 +199,25 @@ The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They m
   - `<sampleid>_multiplemetrics.CollectMultipleMetrics.quality_distribution_metrics`:
   - `<sampleid>_wgsmetrics.CollectWgsMetrics.coverage_metrics`:
   - `<sampleid>_wgsmetrics_y.CollectWgsMetrics.coverage_metrics`:
+  </details>
+
+##### Riker multi
+
+[Riker](https://github.com/fulcrumgenomics/riker) is an alternative BAM QC engine that collects alignment, insert-size, GC-bias, WGS coverage, and hybrid-capture metrics in a single `riker multi` call. It is activated by setting `--qc_metrics_tool riker` and replaces the Picard metrics processes. As with the Picard path, when `--aligner sentieon` is used the WGS coverage metrics are still produced by Sentieon WgsMetricsAlgo rather than by Riker. Targeted hybrid-capture metrics (`*.hybcap-metrics.txt`) are produced only when a target BED file is supplied via `--target_bed`. Generated metrics files are forwarded to MultiQC.
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `{outputdir}/qc_bam/`
+  - `<sampleid>_riker.alignment-metrics.txt`: alignment summary metrics (equivalent to Picard `CollectMultipleMetrics` alignment summary).
+  - `<sampleid>_riker.isize-metrics.txt`: insert-size metrics (equivalent to Picard `CollectMultipleMetrics` insert size).
+  - `<sampleid>_riker.gcbias-summary.txt`: GC-bias summary metrics.
+  - `<sampleid>_riker.base-distribution-by-cycle.txt`: base distribution by cycle metrics.
+  - `<sampleid>_riker.mean-quality-by-cycle.txt`: mean quality by cycle metrics.
+  - `<sampleid>_riker.quality-score-distribution.txt`: quality score distribution metrics.
+  - `<sampleid>_riker.wgs-metrics.txt`: WGS coverage metrics (WGS runs only; equivalent to Picard `CollectWgsMetrics`).
+  - `<sampleid>_riker_y.wgs-metrics.txt`: chrY WGS coverage metrics (WGS runs only; a second `riker multi` pass restricted to the chrY intervals, mirroring Picard `CollectWgsMetrics` on chrY). Published only; not forwarded to MultiQC.
+  - `<sampleid>_riker.hybcap-metrics.txt`: hybrid-capture metrics (produced whenever a target BED is supplied via `--target_bed`; equivalent to Picard `CollectHsMetrics`).
   </details>
 
 ##### Chromograph coverage
@@ -227,15 +255,28 @@ The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They m
 
 ##### VerifyBamID2
 
-[VerifyBamID2](https://github.com/Griffan/VerifyBamID) is used to analyse a bam file and generates a contamination report. The pipeline will only generate the following files when the parameters `verifybamid_svd_bed`, `verifybamid_svd_mu`, and `verifybamid_svd_ud` are provided.
+[VerifyBamID2](https://github.com/Griffan/VerifyBamID) is used to analyse a bam file and generates a contamination report. The pipeline will only generate the following files when the parameters `verifybamid_svd_bed`, `verifybamid_svd_mu`, and `verifybamid_svd_ud` are provided. It can be skipped explicitly via `--skip_tools verifybamid`.
 
 <details markdown="1">
 <summary>Output files</summary>
 
-- `{outputdir}/qc_bam/`
+- `{outputdir}/contamination/verifybamid/`
   - `<sampleid>.selfSM`:
   - `<sampleid>.Ancestry`:
     </details>
+
+##### GATK CalculateContamination
+
+[GATK GetPileupSummaries](https://gatk.broadinstitute.org/hc/en-us/articles/30332036200731-GetPileupSummaries) summarises read support for a set of known variant sites to enable downstream contamination estimation. [GATK CalculateContamination](https://gatk.broadinstitute.org/hc/en-us/articles/30332023942555-CalculateContamination) then estimates the fraction of reads originating from cross-sample contamination. This step requires providing `--contamination_sites` (a VCF of common variants) and is skippable via `--skip_tools gatkcontamination`. Results are reported in MultiQC with color-coded thresholds.
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `{outputdir}/contamination/gatk/`
+  - `<sample_id>.contamination.table`: table containing the estimated contamination fraction and confidence interval for each sample.
+  - `<sample_id>.pileups.table`: table containing the pileup counts at known variant sites used as input to contamination estimation.
+
+</details>
 
 #### Reporting
 
@@ -256,6 +297,8 @@ Results generated by MultiQC collate pipeline QC from supported tools e.g. FastQ
 </details>
 
 ### Variant calling - SNV
+
+> **NB**: This section is skipped if a precalled SNV VCF is supplied in the samplesheet (see [Samplesheet for VCF file input](usage.md#samplesheet-for-vcf-file-input)); the supplied VCF is used directly for annotation instead, and no `call_snv/genome` output is produced.
 
 #### DeepVariant
 
@@ -286,6 +329,8 @@ The pipeline performs variant calling using [Sentieon DNAscope](https://support.
 </details>
 
 ### Variant calling - SV
+
+> **NB**: This section is skipped if a precalled SV VCF is supplied in the samplesheet (see [Samplesheet for VCF file input](usage.md#samplesheet-for-vcf-file-input)); the supplied VCF is used directly for annotation instead, and no `call_sv/genome` output is produced.
 
 #### Manta
 
@@ -319,6 +364,8 @@ The pipeline performs variant calling using [Sentieon DNAscope](https://support.
 ### Variant calling - repeat expansions
 
 #### Expansion Hunter
+
+> **NB**: This section is skipped if a precalled repeat-expansion VCF is supplied in the samplesheet (see [Samplesheet for VCF file input](usage.md#samplesheet-for-vcf-file-input)); the supplied VCF is used directly for Stranger annotation instead, and no ExpansionHunter output is produced.
 
 [Expansion Hunter](https://github.com/Illumina/ExpansionHunter) aims to estimate sizes of repeat sequences by performing a targeted search through alignments that span, flank, and are fully contained in each repeat. The files generated are ready to be used with [REViewer](https://github.com/Illumina/REViewer).
 
@@ -446,6 +493,8 @@ Mitochondrial analysis is run by default. If you want to turn off annotations se
 
 #### Alignment and variant calling
 
+> **NB**: This step is skipped if a precalled MT VCF is supplied in the samplesheet (see [Samplesheet for VCF file input](usage.md#samplesheet-for-vcf-file-input)); the supplied VCF is used directly for annotation instead, and no `call_snv/mitochondria` output is produced.
+
 [Alignment and variant calling - GATK Mitochondrial short variant discovery pipeline](https://gatk.broadinstitute.org/hc/en-us/articles/4403870837275-Mitochondrial-short-variant-discovery-SNVs-Indels-) The mitochondrial genome poses several challenges to the identification and understanding of somatic variants. The circularity of the mitochondrial genome means that the breakpoint in the reference genome is at an arbitrary position in the non-coding control region, creating a challenge in analyzing variation. Additionally, insertions of mitochondrial DNA into the nuclear genome (NuMTs) complicate the mapping of the mitochondrial genome and the distinction between NuMTs and the mitochondrial contig of interest. Lastly, mitochondrial variants often have very low heteroplasmy. Such low allele fraction (AF) variants can thus be mistaken for inherent sequencer noise.
 
 The pipeline for mitochondrial variant discovery, using Mutect2, uses a high sensitivity to low AF and separate alignments using opposite genome breakpoints to allow for the tracing of lineages of rare mitochondrial variants.
@@ -464,11 +513,11 @@ The pipeline for mitochondrial variant discovery, using Mutect2, uses a high sen
 ##### Saltshaker
 
 [MitoSAlt](https://mitosalt.sourceforge.io/) allows the detection and quantification of mtDNA strucutral variants.
-[Saltshaker](https://github.com/aksenia/saltshaker) allows for downstream clustering and classification of mtDNA strucutral variants. Called variants are combined with structural variants called in the nuclear genome.
+[Saltshaker](https://gitlab.com/genomedx/annotation/saltshaker) allows for downstream clustering and classification of mtDNA strucutral variants. Called variants are combined with structural variants called in the nuclear genome.
 
 - `call_sv`
-  - `<sample_id>.saltshaker_classify.txt`: report containing case-level classification of mitochondrial deletions.
-  - `<sample_id>.saltshaker.png`: circos plot.
+  - `<case_id>.saltshaker_classify.html`: report containing case-level classification of mitochondrial deletions. Only created when MitoSAlt finds at least one cluster.
+  - `<sample_id>.saltshaker.png`: circos plot. Only created when MitoSAlt finds at least one cluster.
 
 #### Annotation
 
@@ -528,6 +577,8 @@ We recommend using vcfanno to annotate SNVs with precomputed CADD scores (files 
 
 #### Calling mobile elements
 
+> **NB**: This section is skipped if a precalled ME VCF is supplied in the samplesheet (see [Samplesheet for VCF file input](usage.md#samplesheet-for-vcf-file-input)); the supplied VCF is used directly for annotation instead, and no `call_mobile_elements/` output is produced.
+
 Mobile elements are identified from the bam file using [RetroSeq](https://github.com/tk2/RetroSeq) and the indiviual calls are merged to case VCF using SVDB.
 
 <details markdown="1">
@@ -554,33 +605,6 @@ The mobile elements are annotated with allele frequencies and allele counts usin
 
 </details>
 
-### Variant evaluation
-
-Provided a truth set, SNVs can be evaluated using RTG Tools' vcfeval engine. Output files generated are listed below with a short description, but if you'd like to know more about what's in each of the files, refer to RTG Tools documentation [here](https://www.animalgenome.org/bioinfo/resources/manuals/RTGOperationsManual.pdf).
-
-<details markdown="1">
-<summary>Output files</summary>
-
-- `rtgvcfeval/`
-  - `<sample_id>_vcfeval.fn.vcf.gz`: contains variants from the baseline VCF which were not correctly called.
-  - `<sample_id>_vcfeval.fn.vcf.gz.tbi`: index of the \*fn.vcf file
-  - `<sample_id>_vcfeval.fp.vcf.gz`: contains variants from the calls VCF which do not agree with baseline variants.
-  - `<sample_id>_vcfeval.fp.vcf.gz.tbi`: index of the \*fp.vcf file
-  - `<sample_id>_vcfeval.non_snp_roc.tsv.gz`: contains ROC data derived from those variants which were not represented as
-    SNPs.
-  - `<sample_id>_vcfeval.phasing.txt`: containing the data on the phasing
-  - `<sample_id>_vcfeval.snp_roc.tsv.gz`: contains ROC data derived from only those variants which were represented as SNPs.
-  - `<sample_id>_vcfeval.summary.txt`: contains the match summary statistics printed to standard output.
-  - `<sample_id>_vcfeval.tp-baseline.vcf.gz`: contains those variants from the baseline VCF which agree with variants in the
-    calls VCF.
-  - `<sample_id>_vcfeval.tp-baseline.vcf.gz.tbi`: index of the \*tp-baseline.vcf file
-  - `<sample_id>_vcfeval.tp.vcf.gz`: contains those variants from the calls VCF which agree with variants in the baseline VCF
-  - `<sample_id>_vcfeval.tp.vcf.gz.tbi`: index of the \*tp.vcf file
-  - `<sample_id>_vcfeval.weighted_roc.tsv.gz`: contains ROC data derived from all analyzed call variants, regardless of their
-    representation.
-
-</details>
-
 ### Gens
 
 The sequencing data can be prepared for visualization of CNVs in [Gens](https://github.com/Clinical-Genomics-Lund/gens). You can turn it off by supplying the option `--skip_tools gens`. You can read more about how to setup Gens [here](https://github.com/Clinical-Genomics-Lund/gens).
@@ -604,21 +628,34 @@ The sequencing data can be prepared for visualization of CNVs in [Gens](https://
 <summary>Output files</summary>
 
 - `peddy/`
-  - `*.het_check.csv`
-  - `*.het_check.png`
-  - `*.html`
-  - `*.pca_check.png`
-  - `*.ped_check.csv`
-  - `*.ped_check.png`
-  - `*.ped_check.rel-difference.csv`
-  - `*.peddy.ped`
-  - `*.sex_check.csv`
-  - `*.sex_check.png`
-  - `*.vs.html`
+  - `*.het_check.csv`: CSV file containing heterozygosity check results — rate of het calls, allele-balance at het calls, mean and median depth, and a PCA projection onto 1000 Genomes.
+  - `*.het_check.png`: PNG plot of heterozygosity check results — rate of het calls, allele-balance at het calls, mean and median depth, and a PCA projection onto 1000 Genomes.
+  - `*.html`: interactive HTML report with plots for sex check (HET rate on chrX), depth and heterozygosity, and pedigree relatedness, plus an interactive pedigree table.
+  - `*.ped_check.csv`: CSV file containing pedigree check results — pairwise relatedness statistics comparing reported vs. inferred relationships.
+  - `*.ped_check.png`: PNG plot of pedigree check results — comparison between reported and inferred relatedness.
+  - `*.ped_check.rel-difference.csv`: CSV file with the comparison between inferred and reported relatedness for sample pairs where they differ.
+  - `*.peddy.ped`: extended PED file augmented with key columns from the het-check and sex-check results.
+  - `*.sex_check.csv`: CSV file with sex check results — comparison between the sex reported in the PED file and that inferred from genotypes on the non-PAR regions of the X chromosome.
+  - `*.sex_check.png`: PNG plot of sex check results — comparison between reported and inferred sex.
+  - `*.vs.html`: interactive scatter plot of observed vs. expected (pedigree-reported) relatedness for all sample pairs.
+
+</details>
+
+### Pedigree
+
+The pipeline generates a PED file from the input samplesheet using an internal helper module. This file encodes the family structure (sample IDs, sex, and affected status) and is used as input to tools such as Peddy and GENMOD.
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `pedigree/`
+  - `*.ped`: PED file describing the family structure of the case, derived from the input samplesheet.
+
+</details>
 
 ### Pipeline information
 
-[Nextflow](https://www.nextflow.io/docs/latest/tracing.html) provides excellent functionality for generating various reports relevant to the running and execution of the pipeline. This will allow you to troubleshoot errors with the running of the pipeline, and also provide you with other information such as launch commands, run times and resource usage.
+[Nextflow](https://docs.seqera.io/platform-cloud/reports/overview) provides excellent functionality for generating various reports relevant to the running and execution of the pipeline. This will allow you to troubleshoot errors with the running of the pipeline, and also provide you with other information such as launch commands, run times and resource usage.
 
 <details markdown="1">
 <summary>Output files</summary>

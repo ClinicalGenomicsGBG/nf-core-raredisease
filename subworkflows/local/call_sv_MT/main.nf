@@ -3,15 +3,16 @@
 // Also detects the number of discordant pairs using the mitodel script.
 //
 
-include { MT_DELETION         } from '../../../modules/local/mt_deletion_script'
-include { PREP_MITOSALT       } from '../../../modules/local/prep_mitosalt/main'
-include { MITOSALT            } from '../../../modules/local/mitosalt/main'
-include { CAT_FASTQ           } from '../../../modules/nf-core/cat/fastq/main'
-include { SALTSHAKER_CALL     } from '../../../modules/nf-core/saltshaker/call/main'
-include { SALTSHAKER_CLASSIFY } from '../../../modules/nf-core/saltshaker/classify/main'
-include { SALTSHAKER_PLOT     } from '../../../modules/nf-core/saltshaker/plot/main'
-include { SEQTK_SAMPLE        } from '../../../modules/nf-core/seqtk/sample/main'
-include { SVDB_MERGE          } from '../../../modules/nf-core/svdb/merge/main'
+include { CAT_FASTQ            } from '../../../modules/nf-core/cat/fastq/main'
+include { MITOSALT             } from '../../../modules/local/mitosalt/main'
+include { MT_DELETION          } from '../../../modules/local/mt_deletion_script'
+include { PREP_MITOSALT        } from '../../../modules/local/prep_mitosalt/main'
+include { SALTSHAKER_CALL      } from '../../../modules/nf-core/saltshaker/call/main'
+include { SALTSHAKER_CLASSIFY  } from '../../../modules/nf-core/saltshaker/classify/main'
+include { SALTSHAKER_PLOT      } from '../../../modules/nf-core/saltshaker/plot/main'
+include { SALTSHAKER_TO_HTML   } from '../../../modules/local/saltshaker_to_html/main'
+include { SEQTK_SAMPLE         } from '../../../modules/nf-core/seqtk/sample/main'
+include { SVDB_MERGE           } from '../../../modules/nf-core/svdb/merge/main'
 
 workflow CALL_SV_MT {
     take:
@@ -39,12 +40,12 @@ workflow CALL_SV_MT {
         val_mitosalt_heteroplasmy_limit       // string: [mandatory] mitosalt_heteroplasmy_limit
 
     main:
-        ch_saltshaker_txt   = channel.empty()
+        ch_saltshaker_html  = channel.empty()
         ch_saltshaker_vcf   = channel.empty()
         ch_saltshaker_plot  = channel.empty()
 
         if (!skip_mitosalt) {
-            ch_reads
+            ch_cat_fastq = ch_reads
                 .map { meta, reads ->
                         def sample_group_key = meta.sample
                         return [sample_group_key, meta, reads]
@@ -60,13 +61,12 @@ workflow CALL_SV_MT {
 
                     [combined_meta, all_reads]
                 }
-                .set {ch_cat_fastq}
 
             CAT_FASTQ(ch_cat_fastq)
 
             ch_reads_subdepth = CAT_FASTQ.out.reads.combine(ch_subdepth)
 
-            SEQTK_SAMPLE (ch_reads_subdepth)
+            SEQTK_SAMPLE(ch_reads_subdepth)
 
             PREP_MITOSALT(
                 ch_genome_chrsizes,
@@ -81,9 +81,10 @@ workflow CALL_SV_MT {
                 val_mitochondria_name
             )
 
+            ch_prepmitosalt_config = PREP_MITOSALT.out.msconfig.collect()
             MITOSALT(
                 SEQTK_SAMPLE.out.reads,
-                PREP_MITOSALT.out.msconfig,
+                ch_prepmitosalt_config,
                 ch_genome_chrsizes,
                 ch_genome_fai,
                 ch_genome_hisat2index,
@@ -92,15 +93,9 @@ workflow CALL_SV_MT {
                 ch_mt_lastdb
             )
 
-            MITOSALT.out.cluster
-                .filter{ _meta, out -> out.countLines() > 0 }
-                .set{ ch_cluster }
+            ch_saltshaker_in = MITOSALT.out.breakpoint
+                .join(MITOSALT.out.cluster)
 
-            MITOSALT.out.breakpoint
-                .join(ch_cluster)
-                .set{ ch_saltshaker_in }
-
-            // Saltshaker modules will only run if mitosalt called SVs and created a cluster file
             SALTSHAKER_CALL(
                 ch_saltshaker_in,
                 ch_mt_fasta,
@@ -117,48 +112,50 @@ workflow CALL_SV_MT {
                 SALTSHAKER_CALL.out.call,
                 val_mitochondria_name
             )
-            ch_saltshaker_txt = SALTSHAKER_CLASSIFY.out.txt
-            ch_saltshaker_vcf = SALTSHAKER_CLASSIFY.out.vcf
+
+            // Create case-level channel ch_saltshaker_html_input, consisting of all saltshaker txt reports and all
+            // customer IDs (or sample ID if no customer ID) so individual reports have identifers in the final HTML.
+            ch_saltshaker_html_input = SALTSHAKER_CLASSIFY.out.txt
+                .map { meta, txt -> [['id':meta.case_id], txt, meta.customer_id ?: meta.sample] }
+                .groupTuple()
+
+            SALTSHAKER_TO_HTML(
+                ch_saltshaker_html_input
+            )
+            ch_saltshaker_html = SALTSHAKER_TO_HTML.out.classify_html
 
             SALTSHAKER_PLOT(
                 SALTSHAKER_CLASSIFY.out.classify
             )
             ch_saltshaker_plot = SALTSHAKER_PLOT.out.plot
 
-            SALTSHAKER_CLASSIFY.out.vcf
-                .collect{ _meta, vcf -> vcf }
-                .toList()
-                .set { ch_vcf_file_list }
+            // Only merge if Saltshaker produced VCFs; filter on the flat list before wrapping so
+            // combine never sees an empty-spread issue (combining case_info with [[]] would produce
+            // a 1-element channel item that breaks 2-param destructuring closures downstream).
+            ch_vcf_file_list = SALTSHAKER_CLASSIFY.out.vcf
+                .collect { _meta, vcf -> vcf }
+                .filter { !it.isEmpty() }
+                .map { vcf_list -> [vcf_list] }
 
-            // Saltshaker only runs if there are mitosalt calls, so we only merge in that case (ie vcfs
-            // exist, combined channel has two elements) to avoid a merge error
-            ch_case_info
+            ch_merge_input_vcfs = ch_case_info
                 .combine(ch_vcf_file_list)
-                .filter{ it -> it.size() == 2}
-                .set { ch_merge_input_vcfs }
 
-            SVDB_MERGE ( ch_merge_input_vcfs, [], true ).vcf
-                .set {ch_saltshaker_vcf}
+            SVDB_MERGE( ch_merge_input_vcfs, [], true )
+            ch_saltshaker_vcf = SVDB_MERGE.out.vcf
             // Saltshaker only runs if there are mitosalt calls. We update priority list when the
             // saltshaker vcf is created so the priority matches the list of vcfs that will be merged later
             ch_svcaller_priority = ch_svcaller_priority
-                .concat(ch_saltshaker_vcf.map{ _ -> ["mitosalt"] })
+                .concat(ch_saltshaker_vcf.map{ _it -> ["mitosalt"] })
                 .collect()
 
         }
         MT_DELETION(ch_bam_bai, ch_genome_fasta)
 
-        ch_publish = ch_saltshaker_txt
-                        .mix(ch_saltshaker_vcf)
-                        .mix(ch_saltshaker_plot)
-                        .mix(MT_DELETION.out.mt_del_result)
-                        .map { meta, value -> ['call_sv/', [meta, value]] }
 
     emit:
-        saltshaker_txt   = ch_saltshaker_txt             // channel: [ val(meta), path(txt) ]
         saltshaker_vcf   = ch_saltshaker_vcf             // channel: [ val(meta), path(vcf) ]
+        saltshaker_html  = ch_saltshaker_html            // channel: [ val(meta), path(html) ]
         saltshaker_plot  = ch_saltshaker_plot            // channel: [ val(meta), path(png) ]
         mt_del_result    = MT_DELETION.out.mt_del_result // channel: [ val(meta), path(txt) ]
         updated_priority = ch_svcaller_priority          // channel: [ val(["caller1", "caller2", ...]) ] - includes "mitosalt" if it ran
-        publish          = ch_publish                    // channel: [ val(destination), val(value) ]
 }

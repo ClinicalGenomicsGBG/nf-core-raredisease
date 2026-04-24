@@ -2,13 +2,13 @@
 // Align MT
 //
 
-include { BWA_MEM as BWA_MEM_MT                                             } from '../../../modules/nf-core/bwa/mem/main'
-include { SENTIEON_BWAMEM as SENTIEON_BWAMEM_MT                             } from '../../../modules/nf-core/sentieon/bwamem/main'
 include { BWAMEM2_MEM as BWAMEM2_MEM_MT                                     } from '../../../modules/nf-core/bwamem2/mem/main'
+include { BWA_MEM as BWA_MEM_MT                                             } from '../../../modules/nf-core/bwa/mem/main'
 include { GATK4_MERGEBAMALIGNMENT as GATK4_MERGEBAMALIGNMENT_MT             } from '../../../modules/nf-core/gatk4/mergebamalignment/main'
 include { PICARD_ADDORREPLACEREADGROUPS as PICARD_ADDORREPLACEREADGROUPS_MT } from '../../../modules/nf-core/picard/addorreplacereadgroups/main'
 include { PICARD_MARKDUPLICATES as PICARD_MARKDUPLICATES_MT                 } from '../../../modules/nf-core/picard/markduplicates/main'
 include { SAMTOOLS_SORT as SAMTOOLS_SORT_MT                                 } from '../../../modules/nf-core/samtools/sort/main'
+include { SENTIEON_BWAMEM as SENTIEON_BWAMEM_MT                             } from '../../../modules/nf-core/sentieon/bwamem/main'
 
 workflow ALIGN_MT {
     take:
@@ -33,9 +33,8 @@ workflow ALIGN_MT {
             BWA_MEM_MT ( ch_fastq, ch_bwaindex, ch_fasta, true )
             ch_align       = BWA_MEM_MT.out.bam
         }
-        ch_align
+        ch_bam_ubam = ch_align
             .join(ch_ubam, failOnMismatch:true, failOnDuplicate:true)
-            .set {ch_bam_ubam}
 
         GATK4_MERGEBAMALIGNMENT_MT (ch_bam_ubam, ch_fasta, ch_dict)
 
