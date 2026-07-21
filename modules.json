@@ -100,6 +100,11 @@
                         "git_sha": "64ab14a6905e5c9d649f61e2757a1e600dbdb8e0",
                         "installed_by": ["modules"]
                     },
+                    "canvas/germline": {
+                        "branch": "master",
+                        "git_sha": "5e1bb13bd5c9417e72fae6035a148b3f84ae22e2",
+                        "installed_by": ["modules"]
+                    },
                     "cat/cat": {
                         "branch": "master",
                         "git_sha": "7ed72ef972290b93d0bdd7c60ff00a693250f77a",
