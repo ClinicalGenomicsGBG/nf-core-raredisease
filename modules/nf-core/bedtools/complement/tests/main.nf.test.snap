@@ -1,0 +1,43 @@
+{
+    "sarscov2": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "id": "test_out"
+                        },
+                        "test_out.bed:md5,d71df7e47aec0661c27b71e483e727f9"
+                    ]
+                ],
+                "1": [
+                    [
+                        "BEDTOOLS_COMPLEMENT",
+                        "bedtools",
+                        "2.31.1"
+                    ]
+                ],
+                "bed": [
+                    [
+                        {
+                            "id": "test_out"
+                        },
+                        "test_out.bed:md5,d71df7e47aec0661c27b71e483e727f9"
+                    ]
+                ],
+                "versions_bedtools": [
+                    [
+                        "BEDTOOLS_COMPLEMENT",
+                        "bedtools",
+                        "2.31.1"
+                    ]
+                ]
+            }
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.2"
+        },
+        "timestamp": "2026-01-21T11:29:21.900758989"
+    }
+}

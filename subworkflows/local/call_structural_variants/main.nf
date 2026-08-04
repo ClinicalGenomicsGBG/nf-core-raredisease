@@ -2,6 +2,7 @@
 // A nested subworkflow to call structural variants.
 //
 
+include { CALL_SV_CANVAS                 } from '../../../subworkflows/local/call_sv_canvas/main'
 include { CALL_SV_MANTA                  } from '../call_sv_manta'
 include { CALL_SV_TIDDIT                 } from '../call_sv_tiddit'
 include { CALL_SV_MT                     } from '../call_sv_MT'
@@ -14,16 +15,23 @@ workflow CALL_STRUCTURAL_VARIANTS {
 
     take:
         ch_bwa_index                          // channel: [mandatory] [ val(meta), path(index)]
+        ch_canvas_common_cnvs_bed              // channel: [optional] [ val(meta), path(common_cnvs_bed)]
+        ch_canvas_f_ploidy_vcf                 // channel: [mandatory] [ val(meta
+        ch_canvas_filter_bed                  // channel: [optional] [ val(meta), path(filter13)]
+        ch_canvas_kmer_fasta
+        ch_canvas_m_ploidy_vcf                 // channel: [mandatory] [ val(meta), path(vcf)]
         ch_case_info                          // channel: [mandatory] [ val(case_info) ]
         ch_gcnvcaller_model                   // channel: [optional; used by mandatory for GATK's cnvcaller][ path(gcnvcaller_model) ]
         ch_genome_bai                         // channel: [mandatory] [ val(meta), path(bai) ]
         ch_genome_bam                         // channel: [mandatory] [ val(meta), path(bam) ]
         ch_genome_bam_bai                     // channel: [mandatory] [ val(meta), path(bam), path(bai) ]
+        ch_snv_vcf                            // channel: [optional; mandatory for canvas] [ val(meta), path(vcf) ]
         ch_genome_chrsizes                    // channel: [mandatory] [ path(chrsizes) ]
         ch_genome_dictionary                  // channel: [optional; used by mandatory for GATK's cnvcaller][ val(meta), path(dict) ]
         ch_genome_fai                         // channel: [mandatory] [ val(meta), path(fai) ]
         ch_genome_fasta                       // channel: [mandatory] [ val(meta), path(fasta) ]
         ch_genome_hisat2index                 // channel: [mandatory] [ val(meta), path(hisat2index) ]
+        ch_genomesizes                        // channel: [mandatory] [ val(meta), path(xml) ]
         ch_mitosalt_config                    // channel: [mandatory] [val(mitosalt_breakspan),val(mitosalt_breakthreshold),...,val(mitosalt_split_length)]
         ch_mt_bam_bai                         // channel: [mandatory] [ val(meta), path(bam), path(bai) ]
         ch_mt_fai                             // channel: [mandatory] [ val(meta), path(mtfai) ]
@@ -38,6 +46,7 @@ workflow CALL_STRUCTURAL_VARIANTS {
         skip_germlinecnvcaller                // boolean
         skip_mitosalt                         // boolean
         val_analysis_type                     // string: "wes", "wgs", or "mito"
+        val_canvas_reformat_vcf               // boolean: [optional] [default: true] whether to reformat the canvas vcf output to match the expected nf-core/cnvkit vcf output
         val_heavy_strand_origin_end           // string: [mandatory] mitochondira_heavy_strand_origin_end
         val_heavy_strand_origin_start         // string: [mandatory] mitochondira_heavy_strand_origin_start
         val_light_strand_origin_end           // string: [mandatory] mitochondira_light_strand_origin_end
@@ -49,6 +58,7 @@ workflow CALL_STRUCTURAL_VARIANTS {
         val_run_mt_for_wes                    // boolean: [mandatory] run_mt_for_wes
 
     main:
+        ch_canvas_vcf     = channel.empty()
         ch_cnvnator_vcf   = channel.empty()
         ch_gcnvcaller_vcf = channel.empty()
         ch_manta_vcf      = channel.empty()
@@ -70,6 +80,22 @@ workflow CALL_STRUCTURAL_VARIANTS {
                 .vcf
                 .collect{ _meta, vcf -> vcf }
                 .set { ch_tiddit_vcf }
+
+            CALL_SV_CANVAS(
+                ch_genome_bam_bai,
+                ch_snv_vcf,
+                ch_genome_fasta,
+                ch_genomesizes,
+                ch_canvas_m_ploidy_vcf,
+                ch_canvas_f_ploidy_vcf,
+                ch_canvas_filter_bed,
+                ch_target_bed,
+                ch_genome_fai,
+                ch_canvas_common_cnvs_bed,
+                val_canvas_reformat_vcf
+            )
+
+            ch_canvas_vcf = CALL_SV_CANVAS.out.vcf
 
             // CALL_SV_CNVNATOR disabled: container missing C headers (assert.h not found, exit 140)
             // ch_cnvnator_vcf stays as channel.empty() defined above
@@ -130,6 +156,7 @@ workflow CALL_STRUCTURAL_VARIANTS {
                 .concat(ch_manta_vcf)
                 .concat(ch_gcnvcaller_vcf)
                 .concat(ch_cnvnator_vcf)
+                .concat(ch_canvas_vcf)
                 .concat(ch_saltshaker_vcf)
                 .collect()
                 .map { vcf_list -> [vcf_list] }

@@ -13,7 +13,7 @@ BEGIN {
 }
 
 # Insert additional ALT lines into the header of a Canvas VCF file.
-# Should appear belowwith DUP allele because we can reuse that
+# Should appear below DUP allele because we can reuse that
 /^##ALT=<ID=DUP/ {
   print
   print "##ALT=<ID=DEL, Description=\"Deletion\">"

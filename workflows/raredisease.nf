@@ -80,6 +80,12 @@ workflow RAREDISEASE {
     ch_bait_intervals
     ch_cadd_header
     ch_cadd_resources
+    ch_canvas_common_cnvs_bed
+    ch_canvas_filter_bed
+    ch_canvas_female_ploidy_vcf
+    ch_canvas_genomesizes
+    ch_canvas_kmer_fasta
+    ch_canvas_male_ploidy_vcf
     ch_call_interval
     ch_case_info
     ch_dbsnp
@@ -222,6 +228,7 @@ workflow RAREDISEASE {
     val_target_bed
     val_variant_caller
     val_vep_cache_version
+    val_canvas_reformat_vcf
 
     main:
 
@@ -608,16 +615,23 @@ workflow RAREDISEASE {
 
         CALL_STRUCTURAL_VARIANTS (
             ch_genome_bwaindex,
+            ch_canvas_common_cnvs_bed,
+            ch_canvas_female_ploidy_vcf,
+            ch_canvas_filter_bed,
+            ch_canvas_kmer_fasta,
+            ch_canvas_male_ploidy_vcf,
             ch_case_info,
             ch_gcnvcaller_model,
             ch_mapped.genome_marked_bai,
             ch_mapped.genome_marked_bam,
             ch_mapped.genome_marked_bam_bai,
+            CALL_SNV.out.genome_vcf,
             ch_genome_chrsizes,
             ch_genome_dictionary,
             ch_genome_fai,
             ch_genome_fasta,
             ch_genome_hisat2index,
+            ch_canvas_genomesizes,
             ch_mitosalt_config,
             ch_mapped.mt_bam_bai,
             ch_mt_fai,
@@ -632,6 +646,7 @@ workflow RAREDISEASE {
             skip_germlinecnvcaller,
             skip_mitosalt,
             val_analysis_type,
+            val_canvas_reformat_vcf,
             val_heavy_strand_origin_end,
             val_heavy_strand_origin_start,
             val_light_strand_origin_end,

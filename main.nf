@@ -49,6 +49,12 @@ workflow NFCORE_RAREDISEASE {
     val_bwamem2
     val_bwameme
     val_cadd_resources
+    val_canvas_common_cnvs_bed
+    val_canvas_filter_bed
+    val_canvas_female_ploidy_vcf
+    val_canvas_genomesizes
+    val_canvas_kmer_fasta
+    val_canvas_male_ploidy_vcf
     val_call_interval
     val_concatenate_snv_calls
     val_exclude_alt
@@ -142,6 +148,7 @@ workflow NFCORE_RAREDISEASE {
     val_verifybamid_svd_mu
     val_verifybamid_svd_ud
     val_vep_cache
+    val_canvas_reformat_vcf
 
     main:
 
@@ -232,6 +239,12 @@ workflow NFCORE_RAREDISEASE {
 
     // Using channelFromPathWithMeta helper (with simpleName). If filepath is null, returns, [[:],[]]
     ch_cadd_resources           = channelFromPathWithMeta(val_cadd_resources, true)
+    ch_canvas_common_cnvs_bed   = channelFromPathWithMeta(val_canvas_common_cnvs_bed, true)
+    ch_canvas_filter_bed        = channelFromPathWithMeta(val_canvas_filter_bed, true)
+    ch_canvas_female_ploidy_vcf = channelFromPathWithMeta(val_canvas_female_ploidy_vcf, true)
+    ch_canvas_genomesizes       = channelFromPathWithMeta(val_canvas_genomesizes, true)
+    ch_canvas_kmer_fasta        = channelFromPathWithMeta(val_canvas_kmer_fasta, true)
+    ch_canvas_male_ploidy_vcf   = channelFromPathWithMeta(val_canvas_male_ploidy_vcf, true)
     ch_call_interval            = channelFromPathWithMeta(val_call_interval, true)
     ch_ml_model                 = channelFromPathWithMeta(val_ml_model, true)
     ch_variant_catalog          = channelFromPathWithMeta(val_variant_catalog, true)
@@ -377,6 +390,12 @@ workflow NFCORE_RAREDISEASE {
         ch_bait_intervals,
         ch_cadd_header,
         ch_cadd_resources,
+        ch_canvas_common_cnvs_bed,
+        ch_canvas_filter_bed,
+        ch_canvas_female_ploidy_vcf,
+        ch_canvas_genomesizes,
+        ch_canvas_kmer_fasta,
+        ch_canvas_male_ploidy_vcf,
         ch_call_interval,
         ch_case_info,
         ch_dbsnp,
@@ -518,7 +537,8 @@ workflow NFCORE_RAREDISEASE {
         val_svdb_query_dbs,
         val_target_bed,
         val_variant_caller,
-        val_vep_cache_version
+        val_vep_cache_version,
+        val_canvas_reformat_vcf
     )
     emit:
     multiqc_report = RAREDISEASE.out.multiqc_report                        // channel: /path/to/multiqc_report.html
@@ -563,6 +583,12 @@ workflow {
         params.bwamem2,
         params.bwameme,
         params.cadd_resources,
+        params.canvas_common_cnvs_bed,
+        params.canvas_filter_bed,
+        params.canvas_female_ploidy_vcf,
+        params.canvas_genomesizes,
+        params.canvas_kmer_fasta,
+        params.canvas_male_ploidy_vcf,
         params.call_interval,
         params.concatenate_snv_calls,
         params.exclude_alt,
@@ -655,7 +681,8 @@ workflow {
         params.verifybamid_svd_bed,
         params.verifybamid_svd_mu,
         params.verifybamid_svd_ud,
-        params.vep_cache
+        params.vep_cache,
+        params.canvas_reformat_vcf
     )
     //
     // SUBWORKFLOW: Run completion tasks
