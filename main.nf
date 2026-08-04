@@ -57,6 +57,12 @@ workflow NFCORE_RAREDISEASE {
     val_bwameme
     val_cadd_prescored
     val_cadd_resources
+    val_canvas_common_cnvs_bed
+    val_canvas_filter_bed
+    val_canvas_female_ploidy_vcf
+    val_canvas_genomesizes
+    val_canvas_kmer_fasta
+    val_canvas_male_ploidy_vcf
     val_call_interval
     val_concatenate_snv_calls
     val_contamination_sites
@@ -159,6 +165,8 @@ workflow NFCORE_RAREDISEASE {
     val_verifybamid_svd_bed
     val_verifybamid_svd_mu
     val_verifybamid_svd_ud
+    val_vep_cache
+    val_canvas_reformat_vcf
 
     main:
 
@@ -249,6 +257,12 @@ workflow NFCORE_RAREDISEASE {
     // Using channelFromPathWithMeta helper (with simpleName). If filepath is null, returns, [[:],[]]
     ch_cadd_prescored           = channelFromPathWithMeta(val_cadd_prescored, true)
     ch_cadd_resources           = channelFromPathWithMeta(val_cadd_resources, true)
+    ch_canvas_common_cnvs_bed   = channelFromPathWithMeta(val_canvas_common_cnvs_bed, true)
+    ch_canvas_filter_bed        = channelFromPathWithMeta(val_canvas_filter_bed, true)
+    ch_canvas_female_ploidy_vcf = channelFromPathWithMeta(val_canvas_female_ploidy_vcf, true)
+    ch_canvas_genomesizes       = channelFromPathWithMeta(val_canvas_genomesizes, true)
+    ch_canvas_kmer_fasta        = channelFromPathWithMeta(val_canvas_kmer_fasta, true)
+    ch_canvas_male_ploidy_vcf   = channelFromPathWithMeta(val_canvas_male_ploidy_vcf, true)
     ch_call_interval            = channelFromPathWithMeta(val_call_interval, true)
     ch_ml_model                 = channelFromPathWithMeta(val_ml_model, true)
     ch_variant_catalog          = channelFromPathWithMeta(val_variant_catalog, true)
@@ -424,6 +438,12 @@ workflow NFCORE_RAREDISEASE {
         ch_cadd_header,
         ch_cadd_prescored,
         ch_cadd_resources,
+        ch_canvas_common_cnvs_bed,
+        ch_canvas_filter_bed,
+        ch_canvas_female_ploidy_vcf,
+        ch_canvas_genomesizes,
+        ch_canvas_kmer_fasta,
+        ch_canvas_male_ploidy_vcf,
         ch_call_interval,
         ch_case_info,
         ch_contamination_sites,
@@ -583,7 +603,8 @@ workflow NFCORE_RAREDISEASE {
         val_svdb_query_dbs,
         val_target_bed,
         val_variant_caller,
-        val_vep_cache_version
+        val_vep_cache_version,
+        val_canvas_reformat_vcf
     )
     emit:
     align_fastp_out                                     = RAREDISEASE.out.align_fastp_out              // channel: [ val(meta), path(json|html|log|reads|reads_fail|reads_merged) ]
@@ -759,6 +780,12 @@ workflow {
         params.bwameme,
         params.cadd_prescored,
         params.cadd_resources,
+        params.canvas_common_cnvs_bed,
+        params.canvas_filter_bed,
+        params.canvas_female_ploidy_vcf,
+        params.canvas_genomesizes,
+        params.canvas_kmer_fasta,
+        params.canvas_male_ploidy_vcf,
         params.call_interval,
         params.concatenate_snv_calls,
         params.contamination_sites,
@@ -860,7 +887,9 @@ workflow {
         params.vep_plugin_files,
         params.verifybamid_svd_bed,
         params.verifybamid_svd_mu,
-        params.verifybamid_svd_ud
+        params.verifybamid_svd_ud,
+        params.vep_cache,
+        params.canvas_reformat_vcf
     )
     //
     // SUBWORKFLOW: Run completion tasks
