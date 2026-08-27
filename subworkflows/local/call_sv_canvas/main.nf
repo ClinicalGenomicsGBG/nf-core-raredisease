@@ -3,7 +3,7 @@ include { BEDTOOLS_SUBTRACT       } from "../../../modules/nf-core/bedtools/subt
 include { BCFTOOLS_NORM           } from "../../../modules/nf-core/bcftools/norm/main"
 include { BCFTOOLS_VIEW           } from "../../../modules/nf-core/bcftools/view/main"
 include { BCFTOOLS_REHEADER       } from "../../../modules/nf-core/bcftools/reheader/main"
-include { CANVAS_GERMLINE         } from '../../../modules/nf-core/canvas/germline/main'
+include { CANVAS_GERMLINE         } from '../../../modules/local/canvas/germline/main'
 include { GAWK as GAWK_CREATE_SEG } from '../../../modules/nf-core/gawk/main'
 include { GAWK as GAWK_REFORMAT   } from '../../../modules/nf-core/gawk/main'
 include { TABIX_BGZIP             } from '../../../modules/nf-core/tabix/bgzip/main'
