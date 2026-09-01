@@ -42,7 +42,7 @@ workflow CALL_SV_CANVAS {
     // Canvas expects a BED file of regions to exclude, so we take the complement of the BED file produced by the subtraction above.
     BEDTOOLS_COMPLEMENT(
         BEDTOOLS_SUBTRACT.out.bed,
-        ch_fai
+        ch_fai.map { _meta, fai -> fai }
     )
 
     // If no target is provided, the output of BEDTOOLS_COMPLEMENT will be empty, so we use the original canvas filter bed instead
@@ -73,7 +73,7 @@ workflow CALL_SV_CANVAS {
         ch_genomesizes,
         ch_canvas_filter,
         ch_snv,
-        [],
+        [[],[]],
         BCFTOOLS_REHEADER.out.vcf,
         ch_common_cnvs_bed
     )
@@ -84,40 +84,38 @@ workflow CALL_SV_CANVAS {
         false
     )
 
+    ch_bcftools_in = CANVAS_GERMLINE.out.vcf
+        .map { meta, vcf -> tuple(meta, vcf, [])}
+
+
     if (val_reformat_vcf) {
         BCFTOOLS_NORM(
-            CANVAS_GERMLINE.out.vcf,
+            ch_bcftools_in,
             ch_kmer_fasta
         )
 
         GAWK_REFORMAT(
             BCFTOOLS_NORM.out.vcf,
-            channel.value(file(moduleDir + '/bin/reformat_canvas_vcf.awk')),
+            channel.value(file(moduleDir + '/bin/reformat_canvas.awk')),
             false
         )
 
-        TABIX_BGZIP(
-            GAWK_REFORMAT.out.output
-        )
-
-        ch_vcf = TABIX_BGZIP.out.output
-
-    } else {
-        ch_bcftools_in = CANVAS_GERMLINE.out.vcf
+        ch_vcf = GAWK_REFORMAT.out.output
             .map { meta, vcf -> tuple(meta, vcf, [])}
 
-        BCFTOOLS_VIEW(
-            ch_bcftools_in,
-            [],
-            [],
-            []
-        )
-
-        ch_vcf = BCFTOOLS_VIEW.out.vcf
+    } else {
+        ch_vcf = ch_bcftools_in
     }
 
+    BCFTOOLS_VIEW(
+        ch_vcf,
+        [],
+        [],
+        []
+    )
+
     emit:
-    vcf = ch_vcf
+    vcf = BCFTOOLS_VIEW.out.vcf
     seg = GAWK_CREATE_SEG.out.output
 
 }
