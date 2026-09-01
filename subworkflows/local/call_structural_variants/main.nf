@@ -15,11 +15,11 @@ workflow CALL_STRUCTURAL_VARIANTS {
 
     take:
         ch_bwa_index                          // channel: [mandatory] [ val(meta), path(index)]
-        ch_canvas_common_cnvs_bed              // channel: [optional] [ val(meta), path(common_cnvs_bed)]
-        ch_canvas_f_ploidy_vcf                 // channel: [mandatory] [ val(meta
+        ch_canvas_common_cnvs_bed             // channel: [optional] [ val(meta), path(common_cnvs_bed)]
+        ch_canvas_f_ploidy_vcf                // channel: [optional, mandatory for canvas] [ val(meta). path(vcf) ]
         ch_canvas_filter_bed                  // channel: [optional] [ val(meta), path(filter13)]
-        ch_canvas_kmer_fasta
-        ch_canvas_m_ploidy_vcf                 // channel: [mandatory] [ val(meta), path(vcf)]
+        ch_canvas_kmer_fasta                  // channel: [optional, mandatory for canvas] [val(meta), path(fasta)]
+        ch_canvas_m_ploidy_vcf                // channel: [optional, mandatory for canvas] [ val(meta). path(vcf) ]
         ch_case_info                          // channel: [mandatory] [ val(case_info) ]
         ch_gcnvcaller_model                   // channel: [optional; used by mandatory for GATK's cnvcaller][ path(gcnvcaller_model) ]
         ch_genome_bai                         // channel: [mandatory] [ val(meta), path(bai) ]
@@ -84,7 +84,7 @@ workflow CALL_STRUCTURAL_VARIANTS {
             CALL_SV_CANVAS(
                 ch_genome_bam_bai,
                 ch_snv_vcf,
-                ch_genome_fasta,
+                ch_canvas_kmer_fasta,
                 ch_genomesizes,
                 ch_canvas_m_ploidy_vcf,
                 ch_canvas_f_ploidy_vcf,
