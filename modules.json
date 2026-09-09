@@ -57,7 +57,7 @@
                     },
                     "bedtools/complement": {
                         "branch": "master",
-                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
+                        "git_sha": "eec8f61394d1c283ae5d40957ef304b94cdd53d9",
                         "installed_by": ["modules"]
                     },
                     "bedtools/genomecov": {
