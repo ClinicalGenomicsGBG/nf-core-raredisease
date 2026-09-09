@@ -96,6 +96,7 @@ workflow CALL_STRUCTURAL_VARIANTS {
             )
 
             ch_canvas_vcf = CALL_SV_CANVAS.out.vcf
+                .collect { _meta, vcf -> vcf }
 
             // CALL_SV_CNVNATOR disabled: container missing C headers (assert.h not found, exit 140)
             // ch_cnvnator_vcf stays as channel.empty() defined above
@@ -150,7 +151,7 @@ workflow CALL_STRUCTURAL_VARIANTS {
             ch_tiddit_vcf_for_merge = params.filter_sv_to_manta ? Channel.empty() : ch_tiddit_vcf
             ch_priority_for_merge   = params.filter_sv_to_manta ? [] : ch_svcaller_priority
 
-            // Concatenate in specific order: tiddit -> manta -> gcnvcaller -> cnvnator -> mitosalt
+            // Concatenate in specific order: tiddit -> manta -> gcnvcaller -> cnvnator -> canvas -> mitosalt
             // Empty channels won't contribute any items
             ch_tiddit_vcf_for_merge
                 .concat(ch_manta_vcf)

@@ -357,7 +357,7 @@ workflow NFCORE_RAREDISEASE {
     //
     if (skip_germlinecnvcaller) {
         if (val_analysis_type.equals("wgs")) {
-            ch_svcaller_priority = channel.value(["tiddit", "manta"])
+            ch_svcaller_priority = channel.value(["tiddit", "manta", "canvas"])
         } else {
             ch_svcaller_priority = channel.value([])
         }
