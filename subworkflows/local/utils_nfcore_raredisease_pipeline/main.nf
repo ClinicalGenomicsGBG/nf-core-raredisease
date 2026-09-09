@@ -346,6 +346,7 @@ def checkRequiredParameters(params) {
 
     // Requirements that can be modified by the user using either skip_tools or skip_subworkflows here
     def dynamicRequirements = [
+        canvas                  : ["canvas_kmer_fasta", "canvas_genomesizes", "canvas_male_ploidy_vcf", "canvas_female_ploidy_vcf", "canvas_filter_bed"],
         repeat_calling           : ["variant_catalog"],
         repeat_annotation        : ["variant_catalog"],
         snv_calling              : ["genome"],
@@ -373,7 +374,8 @@ def checkRequiredParameters(params) {
 
     def all_skips = params.skip_subworkflows+","+params.skip_tools
     dynamicRequirements.each { condition, paramsList ->
-        if (!all_skips.split(',').contains(condition)) {
+        if ((condition == "canvas" && params.analysis_type == "wgs" && !all_skips.split(',').contains("sv_calling")) ||
+            (condition != "canvas" && !all_skips.split(',').contains(condition))) {
                 mandatoryParams += paramsList
         }
     }

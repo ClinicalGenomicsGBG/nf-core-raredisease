@@ -261,10 +261,17 @@ The mandatory and optional parameters for each category are tabulated below.
 
 ##### 5. Variant calling - Structural variants
 
-| Mandatory | Optional   |
-| --------- | ---------- |
-|           | target_bed |
-|           | bwa        |
+Canvas runs for WGS structural-variant calling and requires Canvas-compatible reference files.
+
+| Mandatory for WGS SV calling | Optional                        |
+| ---------------------------- | ------------------------------- |
+| canvas_kmer_fasta            | canvas_common_cnvs_bed          |
+| canvas_genomesizes           | canvas_reformat_vcf<sup>1</sup> |
+| canvas_male_ploidy_vcf       | target_bed                      |
+| canvas_female_ploidy_vcf     | bwa                             |
+| canvas_filter_bed            |                                 |
+
+<sup>1</sup>Defaults to `true`. Reformats Canvas VCF output for downstream analysis.
 
 ##### 6. Copy number variant calling
 
