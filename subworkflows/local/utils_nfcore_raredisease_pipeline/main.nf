@@ -467,12 +467,12 @@ def checkRequiredParameters(params) {
     // Static requirements that are not influenced by user-defined skips
     def staticRequirements   = [
         analysis_type_wes        : ["target_bed"],
+        canvas                  : ["canvas_kmer_fasta", "canvas_genomesizes", "canvas_male_ploidy_vcf", "canvas_female_ploidy_vcf", "canvas_filter_bed"],
         variant_caller_sentieon  : ["ml_model"]
     ]
 
     // Requirements that can be modified by the user using either skip_tools or skip_subworkflows here
     def dynamicRequirements = [
-        canvas                  : ["canvas_kmer_fasta", "canvas_genomesizes", "canvas_male_ploidy_vcf", "canvas_female_ploidy_vcf", "canvas_filter_bed"],
         repeat_calling           : ["variant_catalog"],
         repeat_annotation        : ["variant_catalog"],
         snv_calling              : ["genome"],
@@ -492,7 +492,8 @@ def checkRequiredParameters(params) {
 
     staticRequirements.each { condition, paramsList ->
         if ((condition == "analysis_type_wes" && params.analysis_type == "wes") ||
-            (condition == "variant_caller_sentieon" && params.variant_caller == "sentieon")) {
+            (condition == "variant_caller_sentieon" && params.variant_caller == "sentieon") ||
+            (condition == "canvas" && params.cnv_caller == "canvas")) {
                 mandatoryParams += paramsList
         }
     }

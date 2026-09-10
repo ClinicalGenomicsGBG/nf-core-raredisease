@@ -63,7 +63,9 @@ workflow NFCORE_RAREDISEASE {
     val_canvas_genomesizes
     val_canvas_kmer_fasta
     val_canvas_male_ploidy_vcf
+    val_canvas_reformat_vcf
     val_call_interval
+    val_cnv_caller
     val_concatenate_snv_calls
     val_contamination_sites
     val_contamination_sites_tbi
@@ -165,8 +167,6 @@ workflow NFCORE_RAREDISEASE {
     val_verifybamid_svd_bed
     val_verifybamid_svd_mu
     val_verifybamid_svd_ud
-    val_vep_cache
-    val_canvas_reformat_vcf
 
     main:
 
@@ -552,6 +552,8 @@ workflow NFCORE_RAREDISEASE {
         val_aligner,
         val_analysis_type,
         val_cadd_resources,
+        val_canvas_reformat_vcf,
+        val_cnv_caller,
         val_concatenate_snv_calls,
         val_duplicates_marker,
         val_exclude_alt,
@@ -604,7 +606,6 @@ workflow NFCORE_RAREDISEASE {
         val_target_bed,
         val_variant_caller,
         val_vep_cache_version,
-        val_canvas_reformat_vcf
     )
     emit:
     align_fastp_out                                     = RAREDISEASE.out.align_fastp_out              // channel: [ val(meta), path(json|html|log|reads|reads_fail|reads_merged) ]
@@ -657,6 +658,7 @@ workflow NFCORE_RAREDISEASE {
     qc_bam_riker_gcbias_summary                         = RAREDISEASE.out.qc_bam_riker_gcbias_summary   // channel: [ val(meta), path(txt) ]
     call_sv_vcf                                         = RAREDISEASE.out.call_sv_vcf                   // channel: [ val(meta), path(vcf) ]
     call_sv_tbi                                         = RAREDISEASE.out.call_sv_tbi                   // channel: [ val(meta), path(tbi) ]
+    canvas_seg                                          = RAREDISEASE.out.canvas_seg                    // channel: [ val(meta), path(tbi) ]
     saltshaker_html                                     = RAREDISEASE.out.saltshaker_html              // channel: [ val(meta), path(html) ]
     saltshaker_plot                                     = RAREDISEASE.out.saltshaker_plot             // channel: [ val(meta), path(png) ]
     generate_cytosure_files_cgh                         = RAREDISEASE.out.generate_cytosure_files_cgh // channel: [ val(meta), path(cgh) ]
@@ -786,7 +788,9 @@ workflow {
         params.canvas_genomesizes,
         params.canvas_kmer_fasta,
         params.canvas_male_ploidy_vcf,
+        params.canvas_reformat_vcf,
         params.call_interval,
+        params.cnv_caller,
         params.concatenate_snv_calls,
         params.contamination_sites,
         params.contamination_sites_tbi,
@@ -888,8 +892,6 @@ workflow {
         params.verifybamid_svd_bed,
         params.verifybamid_svd_mu,
         params.verifybamid_svd_ud,
-        params.vep_cache,
-        params.canvas_reformat_vcf
     )
     //
     // SUBWORKFLOW: Run completion tasks
@@ -961,6 +963,7 @@ workflow {
                                         .mix(NFCORE_RAREDISEASE.out.ann_csq_pli_me_tbi)
     call_sv                            = NFCORE_RAREDISEASE.out.call_sv_vcf
                                             .mix(NFCORE_RAREDISEASE.out.call_sv_tbi)
+                                            .mix(NFCORE_RAREDISEASE.out.canvas_seg)
                                             .mix(NFCORE_RAREDISEASE.out.saltshaker_html)
                                             .mix(NFCORE_RAREDISEASE.out.saltshaker_plot)
                                             .mix(NFCORE_RAREDISEASE.out.mt_del_result)

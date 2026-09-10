@@ -69,7 +69,7 @@ workflow CALL_STRUCTURAL_VARIANTS {
         ch_tiddit_vcf     = channel.empty()
 
         if (!val_analysis_type.equals("mito")) {
-            CALL_SV_MANTA (ch_genome_bam, ch_genome_bai, ch_genome_fasta, ch_genome_fai, ch_case_info, ch_target_bed, val_analysis_type)
+            CALL_SV_MANTA (ch_genome_bam, ch_genome_bai, ch_genome_fasta, ch_genome_fai, ch_case_info, ch_target_bed)
                 .filtered_diploid_sv_vcf
                 .collect{ _meta, vcf -> vcf }
                 .set{ ch_manta_vcf }
